@@ -113,7 +113,7 @@
           <a href="https://biz.baemin.com/" target="_blank" rel="noopener noreferrer">배민 사장님광장 <span aria-hidden="true">↗</span></a>
           <a href="https://ceo.yogiyo.co.kr/" target="_blank" rel="noopener noreferrer">요기요 사장님 사이트 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRUNCH'S Portal · v1.0 demo</p>
+        <p class="side-version">CRUNCH'S Portal · v1.1</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -274,7 +274,7 @@
             <h1>발주 내역</h1>
             <p class="view-sub" id="historySub">접수대기 → 본사확인 → 출고완료 순서로 진행됩니다.</p>
           </div>
-          <button class="btn btn-primary" data-nav="orders">새 발주</button>
+          <button class="btn btn-primary" data-nav="orders" id="newOrderBtn">새 발주</button>
         </div>
 
         <div class="filter-row" id="statusFilter">
@@ -413,7 +413,7 @@
           <button class="admin-tab is-active" data-admin-tab="categories" role="tab" aria-selected="true">카테고리 관리</button>
           <button class="admin-tab" data-admin-tab="items" role="tab" aria-selected="false">발주 품목 관리</button>
           <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 · 체크리스트</button>
-          <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가뱀 상담 접수</button>
+          <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가맹 상담 접수</button>
           <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업 · 초기화</button>
         </div>
 
@@ -452,7 +452,7 @@
           <div id="adminManualGroups"></div>
         </section>
 
-        <!-- 가뱀 상담 접수 -->
+        <!-- 가맹 상담 접수 -->
         <section class="admin-panel" data-admin-panel="applications" hidden>
           <div class="admin-toolbar">
             <p class="admin-hint">브랜드 홈페이지 상담 폼으로 접수된 내역입니다. 접수번호·연락처로 바로 연락하세요. <span id="adminAppCount" class="admin-count">0건</span></p>

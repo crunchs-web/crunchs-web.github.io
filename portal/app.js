@@ -117,6 +117,9 @@
     if ($('#adminLabel')) $('#adminLabel').hidden = !hq;
     const dashOrderBtn = $('#dashActions [data-nav="orders"]');
     if (dashOrderBtn) dashOrderBtn.hidden = hq;
+    if ($('#newOrderBtn')) $('#newOrderBtn').hidden = hq;
+    const roleHint = $('#roleHint');
+    if (roleHint) roleHint.hidden = hq;
     if (hq && state.view === 'orders') navigate('history');
     if (!hq && state.view === 'admin') navigate('dashboard');
     $('#historySub').textContent = hq
@@ -1191,7 +1194,17 @@
 
     document.addEventListener('click', async (e) => {
       const tab = e.target.closest('[data-admin-tab]');
-      if (tab) { state.adminTab = tab.dataset.adminTab; renderAdmin(); return; }
+      if (tab) {
+        state.adminTab = tab.dataset.adminTab;
+        renderAdmin();
+        if (state.adminTab === 'applications' && isHQ()) {
+          try {
+            state.applications = await DB.listApplications();
+            renderAdminApplications();
+          } catch (err) { toast(err.message); }
+        }
+        return;
+      }
 
       const catEdit = e.target.closest('[data-cat-edit]');
       if (catEdit) { openCategoryRename(catEdit.dataset.catEdit); return; }
