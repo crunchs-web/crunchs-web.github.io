@@ -8,12 +8,11 @@
 
   const { DB, ORDER_STATUS, STORE_PROFILES } = window.CRUNCHS;
 
-  const SESSION_KEY = 'crunchs-portal:v1:session';
-
   const state = {
     role: 'owner',
     storeId: 'yangsan',
     userName: '',
+    storeTitle: '',
     view: 'dashboard',
     cart: {},
     catalogCat: '전체',
@@ -24,6 +23,7 @@
     readIds: [],
     orders: [],
     posts: [],
+    applications: [],
     checklist: {},
     /* 관리자 편집 데이터 */
     categories: [],
@@ -87,35 +87,29 @@
   });
 
   /* ==========================================================================
-     세션 · 로그인
+     세션 · 로그인 (Supabase Auth)
      ========================================================================== */
-  function saveSession() {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      role: state.role, storeId: state.storeId, userName: state.userName
-    }));
-  }
-  function loadSession() {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
-  }
-
   function applySession(session) {
     state.role = session.role;
     state.storeId = session.role === 'hq' ? 'all' : session.storeId;
-    state.userName = session.userName || '';
+    state.userName = session.ownerName || '';
+    state.storeTitle = session.storeName || storeName(session.storeId);
     $('#appView').hidden = false;
     $('#loginView').hidden = true;
-    const value = session.role === 'hq' ? 'hq:all' : 'owner:' + state.storeId;
-    $('#storeSelect').value = value;
+    const label = session.role === 'hq'
+      ? '본사 · 전체 매장'
+      : (session.storeName || storeName(session.storeId)) + ' 점주';
+    if ($('#storeLabel')) $('#storeLabel').textContent = label;
     updateChrome();
   }
 
   function updateChrome() {
     const hq = isHQ();
     const name = hq ? '본사 관리자' : storeName(state.storeId);
-    $('#userName').textContent = name;
-    $('#userRole').textContent = hq ? '전체 매장' : '점주 모드';
+    $('#userName').textContent = state.userName || name;
+    $('#userRole').textContent = hq ? '본사 관리자' : name + ' 점주';
     $('#userAvatar').textContent = hq ? '본' : name.slice(0, 1);
-    $('#dashStore').textContent = name;
+    $('#dashStore').textContent = hq ? '본사 · 전체 매장' : name;
     $('#newNoticeBtn').hidden = !hq;
     $('#navOrders').hidden = hq;
     $('#newPostBtn').hidden = hq;
@@ -130,11 +124,17 @@
       : '접수대기 → 본사확인 → 출고완료 순서로 진행됩니다.';
   }
 
-  function logout() {
-    localStorage.removeItem(SESSION_KEY);
+  async function logout() {
+    try { await DB.auth.signOut(); } catch (e) { /* 이미 끊긴 세션이면 그대로 진행 */ }
     state.cart = {};
+    state.orders = [];
+    state.notices = [];
+    state.posts = [];
+    state.applications = [];
     $('#appView').hidden = true;
     $('#loginView').hidden = false;
+    const pw = $('#loginPassword');
+    if (pw) pw.value = '';
     window.scrollTo(0, 0);
     closeModal();
   }
@@ -156,6 +156,7 @@
     state.notices = await DB.listNotices();
     state.readIds = await DB.readState(isHQ() ? 'hq' : state.storeId);
     state.posts = isHQ() ? await DB.listAllPosts() : await DB.listPosts(state.storeId);
+    state.applications = isHQ() ? await DB.listApplications() : [];
     state.checklist = await DB.getChecklist(isHQ() ? 'hq' : state.storeId);
 
     pruneCart();
@@ -508,7 +509,22 @@
     renderAdminCategories();
     renderAdminItems();
     renderAdminManuals();
+    renderAdminApplications();
     renderAdminBackup();
+  }
+
+  function renderAdminApplications() {
+    const host = $('#adminAppList');
+    if (!host) return;
+    const list = state.applications || [];
+    if ($('#adminAppCount')) $('#adminAppCount').textContent = list.length + '건';
+    host.innerHTML = list.length ? list.map((a) =>
+      '<div class="admin-row" data-app-id="' + esc(a.id) + '">' +
+        '<span class="admin-row-main"><strong>' + esc(a.name) + ' · ' + esc(a.region) + '</strong>' +
+          '<small>' + esc(a.phone) + ' · ' + fmtDateTime(a.date) + (a.receiptNo ? ' · 접수번호 ' + esc(a.receiptNo) : '') + '</small>' +
+          (a.memo ? '<small class="app-memo">' + esc(a.memo) + '</small>' : '') + '</span>' +
+      '</div>'
+    ).join('') : '<p class="empty-line">아직 접수된 가맹 상담이 없습니다.</p>';
   }
 
   function renderAdminCategories() {
@@ -868,34 +884,39 @@
      이벤트
      ========================================================================== */
   function bindEvents() {
-    /* 로그인 */
-    $('#loginForm').addEventListener('submit', (e) => {
+    /* 로그인 (Supabase Auth — 이메일 + 비밀번호) */
+    $('#loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const role = $('input[name="role"]:checked').value;
-      const storeId = $('#loginStore').value;
-      const userName = $('#loginName').value.trim();
-      state.userName = userName;
-      state.role = role;
-      state.storeId = role === 'hq' ? 'all' : storeId;
-      saveSession();
-      applySession({ role, storeId, userName });
-      reloadAll();
-      navigate('dashboard');
-      toast(role === 'hq' ? '본사 관리자 모드로 입장했습니다.' : storeName(storeId) + ' 점주 모드로 입장했습니다.');
+      const email = $('#loginEmail').value.trim();
+      const password = $('#loginPassword').value;
+      const errorBox = $('#loginError');
+      const submitBtn = $('#loginSubmit');
+      errorBox.textContent = '';
+      if (!email) { errorBox.textContent = '이메일을 입력해 주세요.'; $('#loginEmail').focus(); return; }
+      if (!password) { errorBox.textContent = '비밀번호를 입력해 주세요.'; $('#loginPassword').focus(); return; }
+
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
+      try {
+        const profile = await DB.auth.signIn(email, password);
+        applySession(profile);
+        await reloadAll();
+        navigate('dashboard');
+        toast(profile.role === 'hq' ? '본사 관리자로 로그인했습니다.' : (profile.storeName || storeName(profile.storeId)) + ' 점주로 로그인했습니다.');
+      } catch (err) {
+        errorBox.textContent = err.message || '로그인에 실패했습니다.';
+        $('#loginPassword').value = '';
+        $('#loginPassword').focus();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
+      }
     });
 
-    /* 매장 · 권한 전환 */
-    $('#storeSelect').addEventListener('change', (e) => {
-      const [role, store] = e.target.value.split(':');
-      state.role = role;
-      state.storeId = role === 'hq' ? 'all' : store;
-      saveSession();
-      updateChrome();
-      reloadAll();
-      navigate(state.view);
-      toast(role === 'hq' ? '본사 관리자 모드로 전환했습니다.' : storeName(store) + ' 점주 모드로 전환했습니다.');
+    ['#loginEmail', '#loginPassword'].forEach((sel) => {
+      const el = $(sel);
+      if (el) el.addEventListener('input', () => { $('#loginError').textContent = ''; });
     });
-
     $('#logoutBtn').addEventListener('click', logout);
     document.addEventListener('click', (e) => {
       if (e.target.closest('[data-logout]')) logout();
@@ -1242,15 +1263,26 @@
      시작
      ========================================================================== */
   async function init() {
-    await DB.init();
     bindEvents();
     renderChecklist();
 
-    const session = loadSession();
-    if (session) {
-      applySession(session);
-      await reloadAll();
-      navigate('dashboard');
+    let profile = null;
+    try {
+      await DB.init();
+      profile = await DB.auth.currentProfile();
+    } catch (err) {
+      const errorBox = $('#loginError');
+      if (errorBox) errorBox.textContent = '서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+
+    if (profile) {
+      applySession(profile);
+      try {
+        await reloadAll();
+        navigate('dashboard');
+      } catch (err) {
+        toast(err.message || '데이터를 불러오지 못했습니다.');
+      }
     } else {
       $('#loginView').hidden = false;
       $('#appView').hidden = true;
@@ -1260,12 +1292,11 @@
     const hint = document.createElement('p');
     hint.className = 'hint-box';
     hint.id = 'roleHint';
-    hint.innerHTML = '점주 모드에서는 발주 <b>신청</b>과 <b>상태 확인</b>만 가능합니다. 상태 변경(접수대기 → 본사확인 → 출고완료)은 상단에서 <b>본사 관리자</b>로 전환해 처리할 수 있습니다.';
+    hint.innerHTML = '점주 모드에서는 발주 <b>신청</b>과 <b>상태 확인</b>만 가능합니다. 상태 변경(접수대기 → 본사확인 → 출고완료)은 본사 관리자 계정에서 처리합니다.';
     const historyView = $('[data-view="history"]');
     if (historyView && !$('#roleHint')) historyView.insertBefore(hint, historyView.children[1] || null);
     const updateHint = () => { const el = $('#roleHint'); if (el) el.hidden = isHQ(); };
     updateHint();
-    $('#storeSelect').addEventListener('change', updateHint);
   }
 
   document.addEventListener('DOMContentLoaded', init);

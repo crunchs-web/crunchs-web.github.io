@@ -574,115 +574,536 @@ const LocalAdapter = (() => {
 })();
 
 /* ==========================================================================
-   Supabase 어댑터 (연동 지점) — 아래를 채우고 파일 끝 DB 한 줄을 바꾸면 전환 완료
+   Supabase 어댑터 (실서비스)
    --------------------------------------------------------------------------
-   1) <head>에 CDN 추가:
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   2) SUPABASE_URL / SUPABASE_ANON_KEY 채우기
-   3) 아래 SQL로 테이블 생성 (RLS는 매장 단위로 제한)
-
-      create table stores (id text primary key, name text not null, owner text, region text);
-      create table orders (
-        id text primary key, store_id text references stores(id), status text not null default 'pending',
-        memo text, items jsonb not null, created_at timestamptz default now(), updated_at timestamptz
-      );
-      create table notices (
-        id text primary key, title text not null, category text, important boolean default false,
-        body text, created_at timestamptz default now()
-      );
-      create table posts (
-        id text primary key, store_id text references stores(id), title text, body text,
-        created_at timestamptz default now()
-      );
-      create table comments (
-        id bigint generated always as identity primary key, post_id text references posts(id) on delete cascade,
-        author_name text, author_role text, body text, created_at timestamptz default now()
-      );
-      create table checklists (store_id text, item_key text, checked boolean default false, primary key (store_id, item_key));
-
-      -- 관리자 편집(카테고리·품목·매뉴얼) 테이블
-      create table categories (
-        id text primary key, name text not null unique, sort int default 0, created_at timestamptz default now()
-      );
-      create table catalog_items (
-        id text primary key, category_id text references categories(id) on delete restrict,
-        name text not null, unit text, price int not null default 0,
-        storage text default '상온',          -- 냉동 / 냉장 / 상온 / 소모품
-        sold_out boolean default false,
-        created_at timestamptz default now(), updated_at timestamptz
-      );
-      create table manual_items (
-        id text primary key, kind text not null check (kind in ('recipe','open','close')),
-        title text, body text, sort int default 0, created_at timestamptz default now()
-      );
-
-      -- RLS 예시: 카테고리·품목·매뉴얼은 본사(hq)만 쓰기, 전 매장 읽기
-      -- alter table catalog_items enable row level security;
-      -- create policy catalog_read on catalog_items for select using (true);
-      -- create policy catalog_write on catalog_items for all
-      --   using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'hq');
+   · 화면 코드(app.js)는 아래 메서드 이름만 알고 있으므로 그대로 동작합니다.
+   · 프론트엔드에는 공개용(publishable) 키만 들어갑니다.
+     service_role / secret 키는 절대 이 파일이나 저장소에 넣지 않습니다.
+   · 접근 통제는 전부 데이터베이스의 RLS 정책이 담당합니다. (supabase/schema.sql 참고)
    ========================================================================== */
+const SUPABASE_URL = 'https://hgnnaazxpsytjsjmdgbv.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_MIfxqv5yr0WifnFss306hg_vqEtfEXg';
+
 const SupabaseAdapter = (() => {
-  // const { createClient } = supabase;
-  // const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  });
 
-  const notReady = () => Promise.reject(new Error('Supabase 어댑터가 아직 연결되지 않았습니다.'));
+  const fail = (error, fallback) => { throw new Error((error && error.message) || fallback || '요청을 처리하지 못했습니다.'); };
+  const uid = (prefix) => prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = () => { const d = new Date(); return '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); };
 
-  /* 관리자 편집 기능을 Supabase로 옮길 때의 구현 방향
-     - listCategories  : client.from('categories').select('id,name').order('sort')
-     - createCategory  : client.from('categories').insert({ id: slug(name), name, sort })
-     - updateCategory  : categories.update({name}) + catalog_items.update({category_id}) 트랜잭션(RPC 권장)
-     - deleteCategory  : 옵션에 따라 catalog_items의 category_id를 옮기거나 delete 후 categories.delete()
-     - listItems       : client.from('catalog_items').select('*').order('sort')
-     - createItem/updateItem/deleteItem : catalog_items insert/update/delete
-     - setItemSoldOut  : catalog_items.update({ sold_out })
-     - getManuals      : manual_items.select('*') 후 kind별 그룹화
-     - create/update/deleteManualItem : manual_items insert/update/delete
-     - export/import/resetConfig : 위 테이블들을 읽어 JSON으로 묶거나, upsert/delete 후 재삽입 (RPC 권장)
-     - 쓰기 권한은 RLS에서 role='hq'로 제한하고, 점주는 select만 허용. */
+  const mapOrder = (r) => ({
+    id: r.id, storeId: r.store_id, status: r.status, memo: r.memo || '',
+    items: Array.isArray(r.items) ? r.items : [], createdAt: r.created_at, updatedAt: r.updated_at || null
+  });
+  const mapNotice = (r) => ({ id: r.id, title: r.title, cat: r.cat || '', important: !!r.important, date: r.created_at, body: r.body || '', comments: [] });
+  const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
+  const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
+  const mapItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, unit: r.unit || '', price: r.price, note: r.note || '상온', soldOut: !!r.sold_out });
+  const mapManual = (r) => (r.kind === 'recipe'
+    ? { id: r.id, title: r.title, desc: r.body || '' }
+    : { id: r.id, label: r.title });
+
+  async function rows(query) {
+    const { data, error } = await query;
+    if (error) fail(error);
+    return data || [];
+  }
+  async function one(query) {
+    const { data, error } = await query;
+    if (error) fail(error);
+    return data;
+  }
+  const nextSort = async (table, filter) => {
+    let q = client.from(table).select('sort');
+    if (filter) q = filter(q);
+    const data = await rows(q);
+    return data.reduce((m, r) => Math.max(m, Number(r.sort) || 0), 0) + 1;
+  };
+  const removeMissing = async (table, keepIds) => {
+    const existing = await rows(client.from(table).select('id'));
+    const keep = keepIds.map(String);
+    for (const r of existing) {
+      if (keep.indexOf(String(r.id)) >= 0) continue;
+      const { error } = await client.from(table).delete().eq('id', r.id);
+      if (error) fail(error);
+    }
+  };
+
+  async function loadComments(postIds) {
+    if (!postIds.length) return {};
+    const data = await rows(client.from('board_comments').select('*').in('post_id', postIds).order('created_at'));
+    const map = {};
+    data.forEach((c) => { (map[c.post_id] = map[c.post_id] || []).push(mapComment(c)); });
+    return map;
+  }
+
+  async function listPostsWhere(storeId) {
+    let q = client.from('board_posts').select('*').order('created_at', { ascending: false });
+    if (storeId) q = client.from('board_posts').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+    const data = await rows(q);
+    const comments = await loadComments(data.map((p) => p.id));
+    return data.map((p) => mapPost(p, comments[p.id]));
+  }
 
   return {
     name: 'supabase',
-    async init() { /* 세션 확인: const { data } = await client.auth.getSession(); */ },
-    listOrders: notReady,
-    listAllOrders: notReady,
-    createOrder: notReady,
-    updateOrderStatus: notReady,
-    listNotices: notReady,
-    createNotice: notReady,
-    readState: notReady,
-    markNoticeRead: notReady,
-    listPosts: notReady,
-    listAllPosts: notReady,
-    createPost: notReady,
-    addComment: notReady,
-    getChecklist: notReady,
-    toggleChecklist: notReady,
-    /* 관리자 편집 */
-    listCategories: notReady,
-    createCategory: notReady,
-    updateCategory: notReady,
-    deleteCategory: notReady,
-    listItems: notReady,
-    createItem: notReady,
-    updateItem: notReady,
-    deleteItem: notReady,
-    setItemSoldOut: notReady,
-    getManuals: notReady,
-    createManualItem: notReady,
-    updateManualItem: notReady,
-    deleteManualItem: notReady,
-    listChecklists: notReady,
-    createChecklistItem: notReady,
-    updateChecklistItem: notReady,
-    deleteChecklistItem: notReady,
-    exportConfig: notReady,
-    importConfig: notReady,
-    resetConfig: notReady
+    client,
+
+    /* ======================================================================
+       인증
+       ====================================================================== */
+    auth: {
+      async signIn(email, password) {
+        const { error } = await client.auth.signInWithPassword({
+          email: String(email == null ? '' : email).trim(),
+          password: String(password == null ? '' : password)
+        });
+        if (error) {
+          const raw = error.message || '';
+          if (/invalid login/i.test(raw)) throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+          if (/not confirmed/i.test(raw)) throw new Error('이메일 인증이 완료되지 않은 계정입니다. 본사에 문의해 주세요.');
+          if (/rate limit|too many/i.test(raw)) throw new Error('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+          throw new Error(raw);
+        }
+        const profile = await this.currentProfile();
+        if (!profile) {
+          await client.auth.signOut();
+          throw new Error('계정에 매장·권한 정보가 없습니다. 본사에 문의해 주세요.');
+        }
+        return profile;
+      },
+      async signOut() {
+        await client.auth.signOut();
+      },
+      async session() {
+        const { data } = await client.auth.getSession();
+        return (data && data.session) || null;
+      },
+      async currentProfile() {
+        const session = await this.session();
+        if (!session) return null;
+        const data = await one(client.from('profiles')
+          .select('role,store_id,store_name,owner_name')
+          .eq('id', session.user.id)
+          .maybeSingle());
+        if (!data) return null;
+        return {
+          role: data.role,
+          storeId: data.store_id,
+          storeName: data.store_name,
+          ownerName: data.owner_name,
+          email: session.user.email,
+          userId: session.user.id
+        };
+      }
+    },
+
+    async init() { /* 세션은 signIn / persistSession 이 관리합니다. */ },
+
+    /* ======================================================================
+       발주
+       ====================================================================== */
+    async listOrders(storeId) {
+      const data = await rows(client.from('orders').select('*').eq('store_id', storeId).order('created_at', { ascending: false }));
+      return data.map(mapOrder);
+    },
+    async listAllOrders() {
+      const data = await rows(client.from('orders').select('*').order('created_at', { ascending: false }));
+      return data.map(mapOrder);
+    },
+    async createOrder(order) {
+      const payload = {
+        id: 'O-' + stamp() + '-' + String(Math.floor(Math.random() * 9000) + 1000),
+        store_id: order.storeId,
+        status: order.status || 'pending',
+        memo: order.memo || '',
+        items: (order.items || []).map((it) => ({
+          id: it.id, name: it.name, unit: it.unit, price: Number(it.price) || 0, qty: Number(it.qty) || 0
+        }))
+      };
+      const data = await one(client.from('orders').insert(payload).select().single());
+      return mapOrder(data);
+    },
+    async updateOrderStatus(orderId, status) {
+      const data = await one(client.from('orders')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', orderId).select().single());
+      return mapOrder(data);
+    },
+
+    /* ======================================================================
+       공지
+       ====================================================================== */
+    async listNotices() {
+      const data = await rows(client.from('notices').select('*')
+        .order('important', { ascending: false })
+        .order('created_at', { ascending: false }));
+      return data.map(mapNotice);
+    },
+    async createNotice(notice) {
+      const payload = {
+        id: 'n-' + Date.now(),
+        title: String(notice.title || '').trim(),
+        cat: notice.cat || '',
+        important: !!notice.important,
+        body: notice.body || ''
+      };
+      if (!payload.title) throw new Error('공지 제목을 입력해 주세요.');
+      const data = await one(client.from('notices').insert(payload).select().single());
+      return mapNotice(data);
+    },
+    async readState(storeId) {
+      const data = await rows(client.from('notice_reads').select('notice_id').eq('store_id', storeId));
+      return data.map((r) => r.notice_id);
+    },
+    async markNoticeRead(storeId, noticeId) {
+      const { error } = await client.from('notice_reads')
+        .upsert({ store_id: storeId, notice_id: noticeId }, { onConflict: 'store_id,notice_id', ignoreDuplicates: true });
+      if (error) fail(error);
+      return this.readState(storeId);
+    },
+
+    /* ======================================================================
+       건의 게시판
+       ====================================================================== */
+    async listPosts(storeId) { return listPostsWhere(storeId); },
+    async listAllPosts() { return listPostsWhere(null); },
+    async createPost(post) {
+      const payload = {
+        id: 'p-' + Date.now(),
+        store_id: post.storeId,
+        title: String(post.title || '').trim(),
+        body: String(post.body || '').trim()
+      };
+      if (!payload.title) throw new Error('제목을 입력해 주세요.');
+      const data = await one(client.from('board_posts').insert(payload).select().single());
+      return mapPost(data, []);
+    },
+    async addComment(postId, comment) {
+      const payload = {
+        post_id: postId,
+        by_role: comment.by || 'owner',
+        author_name: comment.name || '',
+        body: String(comment.body || '').trim()
+      };
+      if (!payload.body) throw new Error('댓글 내용을 입력해 주세요.');
+      const { error } = await client.from('board_comments').insert(payload);
+      if (error) fail(error);
+      const data = await one(client.from('board_posts').select('*').eq('id', postId).maybeSingle());
+      return data ? mapPost(data, []) : null;
+    },
+
+    /* ======================================================================
+       가맹 상담 접수 (본사 전용 조회)
+       ====================================================================== */
+    async listApplications() {
+      const data = await rows(client.from('franchise_applications')
+        .select('*').order('created_at', { ascending: false }).limit(200));
+      return data.map((r) => ({
+        id: r.id, name: r.name, phone: r.phone, region: r.region || '',
+        memo: r.memo || '', receiptNo: r.receipt_no || '', date: r.created_at
+      }));
+    },
+
+    /* ======================================================================
+       발주 카테고리 (본사 편집)
+       ====================================================================== */
+    async listCategories() {
+      const data = await rows(client.from('categories').select('name').order('sort'));
+      return data.map((c) => c.name);
+    },
+    async createCategory(name) {
+      const next = String(name == null ? '' : name).trim();
+      if (!next) throw new Error('카테고리 이름을 입력해 주세요.');
+      if (next.length > 20) throw new Error('카테고리 이름은 20자 이내로 입력해 주세요.');
+      const cats = await this.listCategories();
+      if (cats.indexOf(next) >= 0) throw new Error('이미 등록된 카테고리입니다.');
+      const sort = await nextSort('categories');
+      const { error } = await client.from('categories').insert({ id: next, name: next, sort });
+      if (error) fail(error);
+      return this.listCategories();
+    },
+    async updateCategory(oldName, newName) {
+      const next = String(newName == null ? '' : newName).trim();
+      if (!next) throw new Error('카테고리 이름을 입력해 주세요.');
+      if (next.length > 20) throw new Error('카테고리 이름은 20자 이내로 입력해 주세요.');
+      const cats = await this.listCategories();
+      if (cats.indexOf(oldName) < 0) throw new Error('카테고리를 찾을 수 없습니다.');
+      if (next === oldName) return cats;
+      if (cats.indexOf(next) >= 0) throw new Error('이미 등록된 카테고리입니다.');
+      // 기본키(id)를 바꾸면 catalog_items.cat 이 ON UPDATE CASCADE 로 함께 옮겨집니다.
+      const { error } = await client.from('categories').update({ id: next, name: next }).eq('id', oldName);
+      if (error) fail(error);
+      return this.listCategories();
+    },
+    async deleteCategory(name, options) {
+      const opts = options || {};
+      const cats = await this.listCategories();
+      if (cats.indexOf(name) < 0) throw new Error('카테고리를 찾을 수 없습니다.');
+      if (cats.length <= 1) throw new Error('카테고리는 최소 1개가 필요합니다.');
+      const affected = await rows(client.from('catalog_items').select('id').eq('cat', name));
+      if (affected.length) {
+        if (opts.mode === 'move') {
+          if (!opts.to || opts.to === name || cats.indexOf(opts.to) < 0) throw new Error('품목을 옮길 카테고리를 선택해 주세요.');
+          const { error } = await client.from('catalog_items').update({ cat: opts.to }).eq('cat', name);
+          if (error) fail(error);
+        } else if (opts.mode === 'delete') {
+          const { error } = await client.from('catalog_items').delete().eq('cat', name);
+          if (error) fail(error);
+        } else {
+          throw new Error('품목 처리 방식을 선택해 주세요.');
+        }
+      }
+      const { error } = await client.from('categories').delete().eq('id', name);
+      if (error) fail(error);
+      return { categories: await this.listCategories(), removedItems: affected.length };
+    },
+
+    /* ======================================================================
+       발주 품목 (본사 편집)
+       ====================================================================== */
+    async listItems() {
+      const data = await rows(client.from('catalog_items').select('*').order('sort'));
+      return data.map(mapItem);
+    },
+    async createItem(data) {
+      const payload = data || {};
+      const cats = await this.listCategories();
+      const name = String(payload.name == null ? '' : payload.name).trim();
+      const cat = String(payload.cat == null ? '' : payload.cat).trim();
+      if (cats.indexOf(cat) < 0) throw new Error('카테고리를 선택해 주세요.');
+      if (!name) throw new Error('품목명을 입력해 주세요.');
+      const price = Number(payload.price);
+      if (!Number.isFinite(price) || price < 0) throw new Error('단가를 0원 이상 숫자로 입력해 주세요.');
+      const sort = await nextSort('catalog_items');
+      const record = {
+        id: uid('it'), cat, name,
+        unit: String(payload.unit == null ? '' : payload.unit).trim(),
+        price, note: payload.note || '상온', sold_out: !!payload.soldOut, sort
+      };
+      const row = await one(client.from('catalog_items').insert(record).select().single());
+      return mapItem(row);
+    },
+    async updateItem(id, patch) {
+      const p = patch || {};
+      const body = { updated_at: new Date().toISOString() };
+      if (p.cat !== undefined) {
+        const cats = await this.listCategories();
+        if (cats.indexOf(p.cat) < 0) throw new Error('카테고리를 선택해 주세요.');
+        body.cat = p.cat;
+      }
+      if (p.name !== undefined) {
+        const n = String(p.name).trim();
+        if (!n) throw new Error('품목명을 입력해 주세요.');
+        body.name = n;
+      }
+      if (p.unit !== undefined) body.unit = String(p.unit == null ? '' : p.unit).trim();
+      if (p.price !== undefined) body.price = Math.max(0, Number(p.price) || 0);
+      if (p.note !== undefined) body.note = p.note || '상온';
+      if (p.soldOut !== undefined) body.sold_out = !!p.soldOut;
+      const row = await one(client.from('catalog_items').update(body).eq('id', id).select().single());
+      return mapItem(row);
+    },
+    async deleteItem(id) {
+      const data = await rows(client.from('catalog_items').delete().eq('id', id).select());
+      if (!data.length) throw new Error('품목을 찾을 수 없습니다.');
+      return this.listItems();
+    },
+    async setItemSoldOut(id, soldOut) {
+      return this.updateItem(id, { soldOut: !!soldOut });
+    },
+
+    /* ======================================================================
+       매뉴얼 · 체크리스트
+       ====================================================================== */
+    async getManuals() {
+      const data = await rows(client.from('manual_items').select('*').order('sort'));
+      const out = { recipe: [], open: [], close: [] };
+      data.forEach((r) => { if (out[r.kind]) out[r.kind].push(mapManual(r)); });
+      return out;
+    },
+    async createManualItem(group, data) {
+      if (['recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
+      const payload = data || {};
+      const isRecipe = group === 'recipe';
+      const raw = isRecipe ? payload.title : payload.label;
+      const title = String(raw == null ? '' : raw).trim();
+      if (!title) throw new Error(isRecipe ? '단계 제목을 입력해 주세요.' : '체크 항목을 입력해 주세요.');
+      const sort = await nextSort('manual_items', (q) => q.eq('kind', group));
+      const record = {
+        id: uid(isRecipe ? 'r' : (group === 'open' ? 'o' : 'c')),
+        kind: group, title,
+        body: isRecipe ? String(payload.desc == null ? '' : payload.desc).trim() : null,
+        sort
+      };
+      const row = await one(client.from('manual_items').insert(record).select().single());
+      return mapManual(row);
+    },
+    async updateManualItem(group, id, patch) {
+      if (['recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
+      const p = patch || {};
+      const isRecipe = group === 'recipe';
+      const body = {};
+      if (isRecipe) {
+        if (p.title !== undefined) {
+          const t = String(p.title || '').trim();
+          if (!t) throw new Error('단계 제목을 입력해 주세요.');
+          body.title = t;
+        }
+        if (p.desc !== undefined) body.body = String(p.desc == null ? '' : p.desc).trim();
+      } else if (p.label !== undefined) {
+        const l = String(p.label || '').trim();
+        if (!l) throw new Error('체크 항목을 입력해 주세요.');
+        body.title = l;
+      }
+      const row = await one(client.from('manual_items').update(body).eq('id', id).eq('kind', group).select().single());
+      return mapManual(row);
+    },
+    async deleteManualItem(group, id) {
+      const data = await rows(client.from('manual_items').delete().eq('id', id).eq('kind', group).select());
+      if (!data.length) throw new Error('항목을 찾을 수 없습니다.');
+      // 삭제된 항목의 체크 상태 정리 (매장별 + 본사)
+      const { error } = await client.from('checklists').delete().eq('item_key', id);
+      if (error) fail(error);
+      const manuals = await this.getManuals();
+      return manuals[group];
+    },
+    async listChecklists() {
+      const manuals = await this.getManuals();
+      return { open: manuals.open, close: manuals.close };
+    },
+    async createChecklistItem(group, data) { return this.createManualItem(group, data); },
+    async updateChecklistItem(group, id, patch) { return this.updateManualItem(group, id, patch); },
+    async deleteChecklistItem(group, id) { return this.deleteManualItem(group, id); },
+
+    /* ======================================================================
+       설정 백업 · 복원 · 초기화
+       ====================================================================== */
+    async exportConfig() {
+      return {
+        app: 'crunchs-portal',
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        categories: await this.listCategories(),
+        items: await this.listItems(),
+        manuals: await this.getManuals()
+      };
+    },
+    async importConfig(payload) {
+      let data = payload;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (e) { throw new Error('JSON 형식이 올바르지 않습니다.'); }
+      }
+      if (!data || typeof data !== 'object') throw new Error('가져올 설정 데이터가 비어 있습니다.');
+      if (!Array.isArray(data.categories) || !data.categories.length) throw new Error('categories 배열이 필요합니다.');
+      if (!Array.isArray(data.items)) throw new Error('items 배열이 필요합니다.');
+      if (!data.manuals || typeof data.manuals !== 'object') throw new Error('manuals 객체가 필요합니다.');
+
+      const categories = [];
+      data.categories.forEach((raw) => {
+        const name = String(raw == null ? '' : raw).trim();
+        if (name && categories.indexOf(name) < 0) categories.push(name);
+      });
+      if (!categories.length) throw new Error('유효한 카테고리가 없습니다.');
+
+      const items = data.items.map((raw, i) => {
+        const it = raw || {};
+        const cat = String(it.cat == null ? '' : it.cat).trim();
+        const name = String(it.name == null ? '' : it.name).trim();
+        if (!cat || !name) throw new Error('items[' + i + ']에 카테고리(cat) 또는 품목명(name)이 없습니다.');
+        if (categories.indexOf(cat) < 0) categories.push(cat);
+        return {
+          id: String(it.id == null ? '' : it.id).trim() || ('it-import-' + i),
+          cat, name,
+          unit: String(it.unit == null ? '' : it.unit).trim(),
+          price: Math.max(0, Number(it.price) || 0),
+          note: it.note || '상온',
+          sold_out: !!it.soldOut,
+          sort: i + 1
+        };
+      });
+
+      const manuals = { recipe: [], open: [], close: [] };
+      ['recipe', 'open', 'close'].forEach((group) => {
+        const list = Array.isArray(data.manuals[group]) ? data.manuals[group] : [];
+        manuals[group] = list.map((raw, i) => {
+          const m = raw || {};
+          if (group === 'recipe') {
+            const title = String(m.title == null ? '' : m.title).trim();
+            if (!title) throw new Error('manuals.recipe[' + i + ']에 제목(title)이 없습니다.');
+            return { id: String(m.id || ('r-import-' + i)), kind: 'recipe', title, body: String(m.desc == null ? '' : m.desc).trim(), sort: i + 1 };
+          }
+          const label = String(m.label == null ? '' : m.label).trim();
+          if (!label) throw new Error('manuals.' + group + '[' + i + ']에 항목(label)이 없습니다.');
+          return { id: String(m.id || (group.charAt(0) + '-import-' + i)), kind: group, title: label, body: null, sort: i + 1 };
+        });
+      });
+
+      /* 적용: 카테고리 → 품목 → 매뉴얼 순서로 upsert 하고, 빠진 항목은 삭제합니다. */
+      for (let i = 0; i < categories.length; i++) {
+        const { error } = await client.from('categories').upsert({ id: categories[i], name: categories[i], sort: i + 1 }, { onConflict: 'id' });
+        if (error) fail(error);
+      }
+      if (items.length) {
+        const { error } = await client.from('catalog_items').upsert(items, { onConflict: 'id' });
+        if (error) fail(error);
+      }
+      await removeMissing('catalog_items', items.map((it) => it.id));
+      await removeMissing('categories', categories);
+      const manualRows = [].concat(manuals.recipe, manuals.open, manuals.close);
+      if (manualRows.length) {
+        const { error } = await client.from('manual_items').upsert(manualRows, { onConflict: 'id' });
+        if (error) fail(error);
+      }
+      await removeMissing('manual_items', manualRows.map((m) => m.id));
+
+      return {
+        categories: categories.length,
+        items: items.length,
+        manuals: manuals.recipe.length + manuals.open.length + manuals.close.length
+      };
+    },
+    async resetConfig() {
+      await this.importConfig({
+        categories: DEFAULT_CATEGORIES.slice(),
+        items: DEFAULT_CATALOG.map((it) => ({ ...it })),
+        manuals: {
+          recipe: DEFAULT_MANUALS.recipe.map((m) => ({ ...m })),
+          open: DEFAULT_MANUALS.open.map((m) => ({ ...m })),
+          close: DEFAULT_MANUALS.close.map((m) => ({ ...m }))
+        }
+      });
+      const { error } = await client.from('checklists').delete().neq('store_id', '');
+      if (error) fail(error);
+      return this.exportConfig();
+    },
+
+    /* ======================================================================
+       매뉴얼 체크리스트 (매장별 체크 상태)
+       ====================================================================== */
+    async getChecklist(storeId) {
+      const data = await rows(client.from('checklists').select('item_key,checked').eq('store_id', storeId));
+      const state = {};
+      data.forEach((r) => { state[r.item_key] = !!r.checked; });
+      return state;
+    },
+    async toggleChecklist(storeId, key) {
+      const state = await this.getChecklist(storeId);
+      const next = !state[key];
+      const { error } = await client.from('checklists')
+        .upsert({ store_id: storeId, item_key: key, checked: next, updated_at: new Date().toISOString() },
+                { onConflict: 'store_id,item_key' });
+      if (error) fail(error);
+      state[key] = next;
+      return state;
+    }
   };
 })();
 
-/* 데이터 소스 전환: localStorage → Supabase 로 옮길 때 이 한 줄만 변경 */
-const DB = LocalAdapter;
+/* 데이터 소스: Supabase (실서비스) */
+const DB = SupabaseAdapter;
 
 window.CRUNCHS = { DB, CATALOG, CATEGORIES, DEFAULT_CATALOG, DEFAULT_CATEGORIES, DEFAULT_MANUALS, ORDER_STATUS, STORE_PROFILES };

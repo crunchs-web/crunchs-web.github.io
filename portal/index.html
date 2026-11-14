@@ -34,46 +34,25 @@
       <img src="assets/logo.png" alt="CRUNCH'S" class="auth-logo-mobile">
       <p class="eyebrow"><span class="dot"></span> OWNER PORTAL</p>
       <h1>점주 포털 로그인</h1>
-      <p class="auth-sub">매장과 권한을 선택해 입장하세요.</p>
+      <p class="auth-sub">본사에서 발급한 계정으로 로그인하세요.</p>
 
-      <label class="field-label" for="loginStore">매장</label>
-      <div class="select-wrap">
-        <select id="loginStore">
-          <option value="yangsan">양산점</option>
-          <option value="gimhae">김해점</option>
-          <option value="pohang">포항점</option>
-        </select>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
+      <label class="field-label" for="loginEmail">이메일</label>
+      <input class="text-input" id="loginEmail" type="email" inputmode="email" autocomplete="username"
+             placeholder="name@crunchs.kr" required>
 
-      <span class="field-label">권한</span>
-      <div class="role-toggle" role="radiogroup" aria-label="권한 선택">
-        <label class="role-option">
-          <input type="radio" name="role" value="owner" checked>
-          <span>
-            <strong>점주 모드</strong>
-            <small>발주 · 공지 열람 · 건의 작성</small>
-          </span>
-        </label>
-        <label class="role-option">
-          <input type="radio" name="role" value="hq">
-          <span>
-            <strong>본사 관리자</strong>
-            <small>전체 매장 · 공지 작성 · 발주 처리</small>
-          </span>
-        </label>
-      </div>
+      <label class="field-label" for="loginPassword">비밀번호</label>
+      <input class="text-input" id="loginPassword" type="password" autocomplete="current-password"
+             placeholder="비밀번호" required>
 
-      <label class="field-label" for="loginName">이름 <span class="opt">(선택)</span></label>
-      <input class="text-input" id="loginName" type="text" placeholder="예) 장성진" autocomplete="name">
+      <p class="form-error" id="loginError" role="alert"></p>
 
-      <button type="submit" class="btn btn-primary btn-block">
-        포털 입장
+      <button type="submit" class="btn btn-primary btn-block" id="loginSubmit">
+        로그인
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 11.8 6.7 16.1 11H4v2h12.1l-4.3 4.3 1.4 1.4L20 12z"/></svg>
       </button>
       <p class="auth-note">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"/><path d="M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
-        데모 프로토타입입니다. 실제 인증 없이 체험용으로 입장하며, 입력한 데이터는 이 브라우저에만 저장됩니다.
+        계정은 본사에서 발급합니다. 비밀번호를 잊으셨다면 본사 운영팀에 문의해 주세요.
       </p>
     </form>
   </div>
@@ -90,21 +69,10 @@
     </a>
     <div class="topbar-spacer"></div>
 
-    <label class="store-switch" for="storeSelect">
-      <span class="sr-only">매장 · 권한 전환</span>
+    <span class="store-switch" id="storeSwitch" title="로그인한 계정의 매장·권한">
       <span class="store-dot" aria-hidden="true"></span>
-      <select id="storeSelect">
-        <optgroup label="점주 모드">
-          <option value="owner:yangsan">양산점 · 점주</option>
-          <option value="owner:gimhae">김해점 · 점주</option>
-          <option value="owner:pohang">포항점 · 점주</option>
-        </optgroup>
-        <optgroup label="본사">
-          <option value="hq:all">본사 관리자 · 전체 매장</option>
-        </optgroup>
-      </select>
-      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-    </label>
+      <strong id="storeLabel">—</strong>
+    </span>
 
     <button class="icon-btn bell-btn" id="bellBtn" aria-label="알림">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>
@@ -445,6 +413,7 @@
           <button class="admin-tab is-active" data-admin-tab="categories" role="tab" aria-selected="true">카테고리 관리</button>
           <button class="admin-tab" data-admin-tab="items" role="tab" aria-selected="false">발주 품목 관리</button>
           <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 · 체크리스트</button>
+          <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가뱀 상담 접수</button>
           <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업 · 초기화</button>
         </div>
 
@@ -481,6 +450,14 @@
         <!-- 매뉴얼 · 체크리스트 -->
         <section class="admin-panel" data-admin-panel="manuals" hidden>
           <div id="adminManualGroups"></div>
+        </section>
+
+        <!-- 가뱀 상담 접수 -->
+        <section class="admin-panel" data-admin-panel="applications" hidden>
+          <div class="admin-toolbar">
+            <p class="admin-hint">브랜드 홈페이지 상담 폼으로 접수된 내역입니다. 접수번호·연락처로 바로 연락하세요. <span id="adminAppCount" class="admin-count">0건</span></p>
+          </div>
+          <div class="admin-list" id="adminAppList"></div>
         </section>
 
         <!-- 백업 · 초기화 -->
@@ -542,6 +519,7 @@
   <span id="toastText">저장되었습니다.</span>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>

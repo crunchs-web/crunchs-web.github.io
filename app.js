@@ -1,10 +1,12 @@
 /* CRUNCH'S 브랜드 사이트 — 인터랙션
-   정적 사이트이므로 신청 데이터는 브라우저 localStorage에만 저장됩니다.
-   실제 접수는 백엔드(폼 서비스·Supabase 등) 연동 지점인 `submitApplication()`만 교체하면 됩니다. */
+   가맹 상담 신청은 Supabase `franchise_applications` 테이블로 실제 접수됩니다.
+   (미로그인 방문자는 INSERT 만 가능하고, 조회는 본사 관리자만 할 수 있습니다.) */
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'crunchs:franchise:applications';
+  /* Supabase 공개(publishable) 설정 — 비밀 키(service_role)는 넣지 않습니다. */
+  var SUPABASE_URL = 'https://hgnnaazxpsytjsjmdgbv.supabase.co';
+  var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_MIfxqv5yr0WifnFss306hg_vqEtfEXg';
   document.documentElement.classList.add('js');
 
   /* ---------- 헤더 스크롤 상태 ---------- */
@@ -139,13 +141,27 @@
     return 'CB-' + date.getFullYear() + p(date.getMonth() + 1) + p(date.getDate()) + '-' + rand;
   }
 
-  /* 실제 서비스에서는 이 함수만 서버 전송(fetch)으로 교체 */
+  /* ---------- 접수 저장 (Supabase) ---------- */
+  var supabaseClient = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      })
+    : null;
+
   function submitApplication(application) {
-    var list = [];
-    try { list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { list = []; }
-    list.push(application);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    return list.length;
+    if (!supabaseClient) {
+      return Promise.reject(new Error('접수 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.'));
+    }
+    return supabaseClient.from('franchise_applications').insert({
+      name: application.name,
+      phone: application.phone,
+      region: application.area,
+      memo: application.memo || null,
+      receipt_no: application.receiptNo
+    }).then(function (res) {
+      if (res.error) throw new Error(res.error.message || '접수 저장에 실패했습니다.');
+      return true;
+    });
   }
 
   form.addEventListener('submit', function (e) {
@@ -153,19 +169,28 @@
     var data = validateForm();
     if (!data) return;
 
-    var now = new Date();
-    data.receiptNo = makeReceiptNo(now);
-    var count = submitApplication(data);
+    var errorBox = document.getElementById('applicationError');
+    var submitBtn = document.getElementById('applicationSubmit');
+    if (errorBox) errorBox.textContent = '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('is-loading'); }
 
-    document.getElementById('successNo').textContent = data.receiptNo;
-    document.getElementById('successName').textContent = data.name;
-    document.getElementById('successPhone').textContent = data.phone;
-    document.getElementById('successArea').textContent = data.area;
+    data.receiptNo = makeReceiptNo(new Date());
 
-    form.hidden = true;
-    success.hidden = false;
-    success.setAttribute('data-count', String(count));
-    success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    submitApplication(data).then(function () {
+      document.getElementById('successNo').textContent = data.receiptNo;
+      document.getElementById('successName').textContent = data.name;
+      document.getElementById('successPhone').textContent = data.phone;
+      document.getElementById('successArea').textContent = data.area;
+
+      form.hidden = true;
+      success.hidden = false;
+      success.setAttribute('data-count', '1');
+      success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }).catch(function (err) {
+      if (errorBox) errorBox.textContent = (err && err.message) || '접수 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    }).then(function () {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('is-loading'); }
+    });
   });
 
   var again = document.getElementById('writeAgain');
