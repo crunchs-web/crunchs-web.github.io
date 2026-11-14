@@ -13,8 +13,9 @@
 
 const STORE_PROFILES = [
   { id: 'yangsan', name: '양산점', owner: '장성진', region: '경남 양산시' },
-  { id: 'gimhae', name: '김해점', owner: '김해점 점주', region: '경남 김해시' },
-  { id: 'pohang', name: '포항점', owner: '포항점 점주', region: '경북 포항시' }
+  { id: 'gimhae_bnb', name: '김해진영비앤비점', owner: '장성진', region: '경남 김해시' },
+  { id: 'busan_gwangan', name: '부산광안점', owner: '장성진', region: '부산 수영구' },
+  { id: 'pohang_idong', name: '포항이동점', owner: '장성진', region: '경북 포항시' }
 ];
 
 /* ---------- 발주 카탈로그 기본값 (데모 단가) ----------
@@ -606,6 +607,32 @@ const SupabaseAdapter = (() => {
     ? { id: r.id, title: r.title, desc: r.body || '' }
     : { id: r.id, label: r.title });
 
+  /* 아이디 → Supabase Auth 이메일 매핑 (가상 도메인 @crunchs.kr)
+     · 'yangsan01' → 'yangsan01@crunchs.kr'
+     · '@' 가 포함된 입력은 이메일 그대로 사용 */
+  const AUTH_DOMAIN = 'crunchs.kr';
+  const toEmail = (idOrEmail) => {
+    const v = String(idOrEmail == null ? '' : idOrEmail).trim().toLowerCase();
+    if (!v) return '';
+    return v.indexOf('@') >= 0 ? v : v + '@' + AUTH_DOMAIN;
+  };
+
+  const inviteReason = (reason) => {
+    const table = {
+      empty: '초대 코드를 입력해 주세요.',
+      code_required: '초대 코드를 입력해 주세요.',
+      not_found: '초대 코드를 찾을 수 없습니다. 코드를 다시 확인해 주세요.',
+      used: '이미 사용된 초대 코드입니다. 본사에 새 코드를 요청해 주세요.',
+      already_used: '이미 사용된 초대 코드입니다. 본사에 새 코드를 요청해 주세요.',
+      expired: '사용 기간이 지난 초대 코드입니다. 본사에 새 코드를 요청해 주세요.',
+      store_mismatch: '이 초대 코드는 다른 지점 전용입니다. 지점을 다시 확인해 주세요.',
+      store_required: '가입할 지점을 선택해 주세요.',
+      store_not_found: '선택한 지점을 찾을 수 없습니다. 본사에 문의해 주세요.',
+      not_authenticated: '로그인 상태가 아닙니다. 다시 시도해 주세요.'
+    };
+    return table[String(reason == null ? '' : reason).toLowerCase()] || '초대 코드가 올바르지 않습니다.';
+  };
+
   async function rows(query) {
     const { data, error } = await query;
     if (error) fail(error);
@@ -656,17 +683,19 @@ const SupabaseAdapter = (() => {
        인증
        ====================================================================== */
     auth: {
-      async signIn(email, password) {
+      async signIn(idOrEmail, password) {
+        const email = toEmail(idOrEmail);
+        if (!email) throw new Error('아이디를 입력해 주세요.');
         const { error } = await client.auth.signInWithPassword({
-          email: String(email == null ? '' : email).trim(),
+          email,
           password: String(password == null ? '' : password)
         });
         if (error) {
           const raw = error.message || '';
-          if (/invalid login/i.test(raw)) throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+          if (/invalid login/i.test(raw)) throw new Error('아이디 또는 비밀번호를 확인해 주세요.');
           if (/not confirmed/i.test(raw)) throw new Error('이메일 인증이 완료되지 않은 계정입니다. 본사에 문의해 주세요.');
           if (/rate limit|too many/i.test(raw)) throw new Error('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
-          throw new Error(raw);
+          throw new Error('로그인에 실패했습니다. 아이디 또는 비밀번호를 확인해 주세요.');
         }
         const profile = await this.currentProfile();
         if (!profile) {
@@ -698,6 +727,67 @@ const SupabaseAdapter = (() => {
           email: session.user.email,
           userId: session.user.id
         };
+      },
+
+      /* 초대 코드 검증 (소바하지 않음) */
+      async verifyInvite(code) {
+        const { data, error } = await client.rpc('verify_invite_code', { p_code: String(code == null ? '' : code).trim() });
+        if (error) fail(error);
+        const row = Array.isArray(data) ? data[0] : data;
+        return row || { valid: false, reason: 'not_found', allow_store_choice: false };
+      },
+
+      /* 가입 화면 지점 드롭다운 옵션 */
+      async storeOptions() {
+        const { data, error } = await client.rpc('list_store_options');
+        if (error || !data) return [];
+        return data.map((r) => ({ id: r.id, name: r.name }));
+      },
+
+      /* 초대 코드로 점주 가입 → 즉시 로그인 */
+      async signUpWithInvite(input) {
+        const code = String((input && input.code) || '').trim().toUpperCase();
+        const ownerName = String((input && input.ownerName) || '').trim();
+        const email = toEmail(input && (input.id || input.email));
+        const password = String((input && input.password) || '');
+        const storeId = String((input && input.storeId) || '').trim();
+
+        if (!email) throw new Error('아이디를 입력해 주세요.');
+        const check = await this.verifyInvite(code);
+        if (!check.valid) throw new Error('유효하지 않거나 이미 사용된 초대 코드입니다.');
+        if (check.allow_store_choice && !storeId) throw new Error('지점을 선택해 주세요.');
+        if (!check.allow_store_choice && storeId && storeId !== check.store_id) {
+          throw new Error('이 초대 코드는 「' + check.store_name + '」 전용입니다. 지점을 다시 확인해 주세요.');
+        }
+
+        const { data, error } = await client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              invite_code: code,
+              store_id: storeId || (check.store_id || null),
+              owner_name: ownerName
+            }
+          }
+        });
+        if (error) {
+          const raw = error.message || '';
+          if (/already registered|already exists|user already/i.test(raw)) throw new Error('이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요.');
+          if (/password/i.test(raw)) throw new Error('비밀번호는 6자 이상으로 입력해 주세요.');
+          if (/invite_/i.test(raw)) throw new Error('유효하지 않거나 이미 사용된 초대 코드입니다.');
+          throw new Error('유효하지 않거나 이미 사용된 초대 코드입니다. 코드를 확인해 주세요.');
+        }
+        if (!data || !data.session) {
+          throw new Error('가입은 접수되었지만 이메일 인증이 필요합니다. 본사에 문의해 주세요.');
+        }
+
+        const profile = await this.currentProfile();
+        if (!profile || !profile.storeId) {
+          await client.auth.signOut();
+          throw new Error('초대 코드 적용에 실패했습니다. 코드를 확인하거나 본사에 문의해 주세요.');
+        }
+        return profile;
       }
     },
 
@@ -806,6 +896,66 @@ const SupabaseAdapter = (() => {
         id: r.id, name: r.name, phone: r.phone, region: r.region || '',
         memo: r.memo || '', receiptNo: r.receipt_no || '', date: r.created_at
       }));
+    },
+
+    /* ======================================================================
+       초대 코드 (본사 전용 관리)
+       ====================================================================== */
+    async listInviteCodes() {
+      const data = await rows(client.from('invite_codes').select('*').order('created_at', { ascending: false }).limit(200));
+      return data.map((r) => ({
+        code: r.code, storeId: r.store_id, storeName: r.store_name,
+        usedBy: r.used_by, usedAt: r.used_at, expiresAt: r.expires_at, createdAt: r.created_at
+      }));
+    },
+    async createInviteCode(input) {
+      const payload = input || {};
+      const allowChoice = !!payload.allowChoice;
+      const storeId = String(payload.storeId == null ? '' : payload.storeId).trim();
+      let storeName = String(payload.storeName == null ? '' : payload.storeName).trim();
+
+      const stores = await rows(client.from('stores').select('id,name'));
+      if (!allowChoice) {
+        if (!storeId) throw new Error('초대할 지점을 선택해 주세요.');
+        const target = stores.filter((s) => s.id === storeId)[0];
+        if (!target) throw new Error('지점을 찾을 수 없습니다.');
+        storeName = target.name;
+      } else {
+        storeName = '';
+      }
+
+      let code = String(payload.code == null ? '' : payload.code).trim().toUpperCase();
+      if (code && !/^[A-Z0-9-]{4,24}$/.test(code)) {
+        throw new Error('코드는 영문 대문자·숫자·하이픈 4~24자로 입력해 주세요.');
+      }
+      const days = Math.max(1, Math.min(365, Number(payload.days) || 14));
+
+      if (!code) {
+        let tries = 0;
+        do {
+          code = 'CRUNCHS-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+          tries += 1;
+        } while (tries < 6 && (await this.listInviteCodes()).some((c) => c.code === code));
+      }
+
+      const session = await this.auth.session();
+      const { error } = await client.from('invite_codes').insert({
+        code,
+        store_id: allowChoice ? null : storeId,
+        store_name: allowChoice ? null : storeName,
+        expires_at: new Date(Date.now() + days * 86400000).toISOString(),
+        created_by: session ? session.user.id : null
+      });
+      if (error) {
+        if (/duplicate key/i.test(error.message || '')) throw new Error('이미 같은 코드가 있습니다. 다른 코드를 사용해 주세요.');
+        fail(error);
+      }
+      return this.listInviteCodes();
+    },
+    async deleteInviteCode(code) {
+      const { error } = await client.from('invite_codes').delete().eq('code', code);
+      if (error) fail(error);
+      return this.listInviteCodes();
     },
 
     /* ======================================================================

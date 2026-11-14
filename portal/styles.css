@@ -192,6 +192,37 @@ textarea { resize: vertical; }
 .auth-form .form-error { margin: 2px 0 0; font-size: 12.5px; }
 .auth-form .form-error:empty { display: none; }
 #loginSubmit[disabled] { opacity: .65; cursor: progress; }
+
+/* 로그인 구분 탭 */
+.auth-tabs { display: flex; gap: 4px; padding: 4px; background: var(--green-50); border: 1px solid var(--line); border-radius: 12px; margin: 4px 0 20px; }
+.auth-tab {
+  flex: 1; border: 0; background: transparent; border-radius: 9px; padding: 10px 8px;
+  font-family: inherit; font-size: 13px; font-weight: 800; color: var(--mute); cursor: pointer; transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.auth-tab:hover { color: var(--text); }
+.auth-tab.is-active { background: #fff; color: var(--green-800); box-shadow: 0 1px 3px rgba(11,15,13,.10); }
+.auth-switch { margin-top: 14px; font-size: 12.5px; color: var(--mute); line-height: 1.6; }
+.link-btn {
+  border: 0; background: none; padding: 0; font: inherit; font-weight: 800; color: var(--green-700);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.field-hint { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+.field-hint:empty { display: none; }
+.field-hint.is-ok { color: var(--green-700); }
+.field-hint.is-bad { color: var(--red); }
+
+/* 초대 코드 폼 */
+.invite-form { flex-wrap: wrap; }
+.invite-form select {
+  height: 38px; border-radius: 10px; border: 1px solid var(--line-strong); padding: 0 10px;
+  font-family: inherit; font-size: 13px; background: #fff; color: var(--text); min-width: 190px;
+}
+.invite-form .invite-days { max-width: 92px; }
+.invite-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; letter-spacing: .06em; }
+.invite-badge { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+.invite-badge.is-live { background: var(--green-50); color: var(--green-700); }
+.invite-badge.is-used { background: var(--blue-bg); color: var(--blue); }
+.invite-badge.is-dead { background: #F3F4F3; color: var(--faint); }
 .app-memo { color: var(--mute) !important; }
 .admin-row .app-memo { margin-top: 2px; }
 .bell-btn { position: relative; }
