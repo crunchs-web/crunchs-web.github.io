@@ -96,6 +96,9 @@
     state.storeId = session.role === 'hq' ? 'all' : session.storeId;
     state.userName = session.ownerName || '';
     state.storeTitle = session.storeName || storeName(session.storeId);
+    /* 계정 전환 시 이전 계정의 숫자가 잠시 보이지 않도록 초기화 */
+    ['#kpiMonthOrders', '#kpiMonthAmount', '#kpiPending', '#kpiUnread', '#kpiPosts', '#dashDate']
+      .forEach((sel) => { const el = $(sel); if (el) el.textContent = sel === '#dashDate' ? '' : '—'; });
     $('#appView').hidden = false;
     $('#loginView').hidden = true;
     const label = session.role === 'hq'
