@@ -1008,17 +1008,6 @@
     return true;
   }
 
-  function openResetConfirm() {
-    openConfirm('기본값으로 초기화',
-      '카테고리·품목·매뉴얼을 처음 예시 데이터로 되돌립니다.<br>직접 추가·수정한 설정과 체크리스트 체크 상태가 사라집니다.<br><b>발주 내역·공지·건의는 그대로 유지됩니다.</b>',
-      '초기화', async () => {
-        await DB.resetConfig();
-        closeModal();
-        await refreshCatalogData();
-        toast('기본 예시 데이터로 초기화했습니다.');
-      }, true);
-  }
-
   /* ==========================================================================
      내비게이션
      ========================================================================== */
@@ -1423,7 +1412,6 @@
       if (ok) box.dataset.dirty = 'false';
     });
     $('#adminBackupText').addEventListener('input', (e) => { e.target.dataset.dirty = 'true'; });
-    $('#adminReset').addEventListener('click', openResetConfirm);
 
     document.addEventListener('keydown', (e) => {
       const input = e.target.closest('[id^="adminManualInput-"]');

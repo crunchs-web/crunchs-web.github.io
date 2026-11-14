@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261115a">
+<link rel="stylesheet" href="styles.css?v=20261115b">
 </head>
 <body>
 
@@ -300,7 +300,6 @@
               </div>
             </div>
             <div class="item-grid" id="catalogList"></div>
-            <p class="demo-note">※ 품목과 단가는 시안용 예시 데이터입니다. 실제 단가는 본사 발주 계정 기준으로 적용됩니다.</p>
           </div>
 
           <aside class="cart-panel" id="cartPanel" aria-label="발주 바구니">
@@ -481,7 +480,7 @@
           <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 · 체크리스트</button>
           <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가맹 상담 접수</button>
           <button class="admin-tab" data-admin-tab="invites" role="tab" aria-selected="false">초대 코드 관리</button>
-          <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업 · 초기화</button>
+          <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업</button>
         </div>
 
         <!-- 카테고리 -->
@@ -550,7 +549,7 @@
           <div class="admin-list" id="inviteList"></div>
         </section>
 
-        <!-- 백업 · 초기화 -->
+        <!-- 백업 -->
         <section class="admin-panel" data-admin-panel="backup" hidden>
           <div class="admin-backup">
             <div class="admin-backup-col">
@@ -563,15 +562,14 @@
               <textarea class="text-input admin-json" id="adminBackupText" rows="14" spellcheck="false" aria-label="설정 JSON"></textarea>
             </div>
             <div class="admin-backup-col">
-              <h3>가져오기 · 초기화</h3>
+              <h3>가져오기</h3>
               <p>내보낸 파일을 불러오거나, 붙여넣은 JSON을 그대로 적용할 수 있습니다.</p>
               <div class="admin-toolbar-actions">
                 <label class="btn btn-ghost btn-sm" for="adminImportFile">파일 선택</label>
                 <input type="file" id="adminImportFile" accept="application/json,.json" hidden>
                 <button class="btn btn-primary btn-sm" id="adminImportText" type="button">입력한 JSON 적용</button>
-                <button class="btn btn-ghost btn-sm is-danger" id="adminReset" type="button">기본값으로 초기화</button>
               </div>
-              <p class="admin-hint">초기화는 카테고리·품목·매뉴얼을 처음 예시 데이터로 되돌리고 체크리스트 체크 상태를 비웁니다. 발주 내역·공지·건의는 그대로 유지됩니다.</p>
+              <p class="admin-hint">적용하면 현재 카테고리·품목·매뉴얼 설정이 입력한 JSON 내용으로 교체됩니다. 발주 내역·공지·건의는 그대로 유지됩니다.</p>
               <div class="admin-backup-status">
                 <p class="admin-backup-status-title">현재 저장된 설정</p>
                 <ul>
@@ -610,7 +608,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261115a"></script>
-<script src="app.js?v=20261115a"></script>
+<script src="data.js?v=20261115b"></script>
+<script src="app.js?v=20261115b"></script>
 </body>
 </html>

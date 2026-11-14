@@ -18,9 +18,9 @@ const STORE_PROFILES = [
   { id: 'pohang_idong', name: '포항이동점', owner: '장성진', region: '경북 포항시' }
 ];
 
-/* ---------- 발주 카탈로그 기본값 (데모 단가) ----------
-   실제 화면은 localStorage에 저장된 값을 쓰고, 아래는 최초 시드·초기화용 기본값입니다.
-   (본사 관리자 → 관리자 설정에서 추가·수정·삭제한 내용이 이 기본값을 대체합니다.) */
+/* ---------- 발주 카탈로그 기본값 ----------
+   화면의 품목·단가는 DB(catalog_items)에 저장된 값을 씁니다.
+   아래는 localStorage 어댑터(개발용)의 최초 시드용 기본값이며, 실서비스 화면에는 쓰이지 않습니다. */
 const DEFAULT_CATALOG = [
   { id: 'patty-beef', cat: '패티', name: '비프 패티 90g', unit: '1팩(20ea)', price: 24000, note: '냉동' },
   { id: 'patty-chicken', cat: '패티', name: '치킨 패티 (크런치용)', unit: '1팩(20ea)', price: 21500, note: '냉동' },

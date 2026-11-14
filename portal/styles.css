@@ -399,7 +399,6 @@ textarea { resize: vertical; }
 }
 .add-btn:hover { background: var(--green-600); }
 .add-btn.is-added { background: var(--green-50); color: var(--green-800); border-color: var(--green-100); }
-.demo-note { font-size: 11.5px; color: var(--faint); margin-top: 14px; }
 
 /* ---------- 장바구니 ---------- */
 .cart-panel {
