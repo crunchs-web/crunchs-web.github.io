@@ -1117,7 +1117,7 @@
       if (!code) { errorBox.textContent = '초대 코드를 입력해 주세요.'; $('#signupCode').focus(); return; }
       if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(id)) { errorBox.textContent = '아이디는 영문 소문자·숫자 3~30자로 입력해 주세요. (예: gimhae01)'; $('#signupId').focus(); return; }
       if (!ownerName) { errorBox.textContent = '이름을 입력해 주세요.'; $('#signupName').focus(); return; }
-      if (pw.length < 6) { errorBox.textContent = '비밀번호는 6자 이상으로 입력해 주세요.'; $('#signupPassword').focus(); return; }
+      if (pw.length < 8) { errorBox.textContent = '비밀번호는 8자 이상으로 입력해 주세요.'; $('#signupPassword').focus(); return; }
       if (pw !== pw2) { errorBox.textContent = '비밀번호가 서로 다릅니다. 다시 확인해 주세요.'; $('#signupPassword2').focus(); return; }
       if (!storeId) { errorBox.textContent = '지점을 선택해 주세요.'; $('#signupStore').focus(); return; }
 
