@@ -494,6 +494,8 @@ textarea { resize: vertical; }
 .notice-title { font-size: 14.5px; font-weight: 800; letter-spacing: -0.02em; }
 .notice-snippet { font-size: 12.5px; color: var(--mute); margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .notice-date { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.notice-date.notice-edited { color: var(--green-700); font-weight: 700; }
+.notice-date.notice-edited::before { content: '·'; margin-right: 4px; color: var(--faint); font-weight: 400; }
 .notice-article { font-size: 13.5px; line-height: 1.8; color: #26332C; white-space: pre-wrap; }
 .notice-article-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
 

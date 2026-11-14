@@ -515,15 +515,101 @@
       renderBadges();
       renderDashboard();
     }
+    /* 본사 관리자에게만 수정·삭제 버튼을 보입니다. 점주 화면에는 절대 노출하지 않습니다. */
+    const actions = isHQ()
+      ? '<div class="form-actions">' +
+          '<button class="btn btn-ghost is-danger" id="deleteNoticeBtn" type="button">삭제</button>' +
+          '<button class="btn btn-ghost" id="editNoticeBtn" type="button">수정</button>' +
+          '<button class="btn btn-primary" data-close-modal type="button">닫기</button></div>'
+      : '<div class="form-actions"><button class="btn btn-ghost" data-close-modal type="button">닫기</button></div>';
+
     openModal('공지사항', '' +
       '<div class="notice-article-meta">' +
         '<span class="notice-tag" data-cat="' + esc(n.cat) + '">' + esc(n.cat) + '</span>' +
         (n.important ? '<span class="mini-tag mini-tag--important">중요</span>' : '') +
         '<span class="notice-date">' + fmtDateTime(n.date) + '</span>' +
+        (n.updatedAt ? '<span class="notice-date notice-edited">수정 ' + fmtDateTime(n.updatedAt) + '</span>' : '') +
       '</div>' +
       '<h3 style="font-size:17px;font-weight:800;letter-spacing:-.02em;margin-bottom:14px;line-height:1.45">' + esc(n.title) + '</h3>' +
       '<div class="notice-article">' + esc(n.body) + '</div>' +
-      '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>닫기</button></div>');
+      actions);
+
+    if (isHQ()) {
+      $('#editNoticeBtn').addEventListener('click', () => openNoticeForm(n));
+      $('#deleteNoticeBtn').addEventListener('click', () => confirmDeleteNotice(n));
+    }
+  }
+
+  /* 공지 작성 · 수정 모달 (본사 관리자 전용) */
+  const NOTICE_CATS = ['신메뉴', '단가변동', '위생점검', '일반'];
+
+  function openNoticeForm(notice) {
+    const editing = !!notice;
+    const cats = NOTICE_CATS.slice();
+    if (editing && notice.cat && cats.indexOf(notice.cat) < 0) cats.unshift(notice.cat);
+    const options = (editing && !notice.cat ? [''] : []).concat(cats);
+
+    openModal(editing ? '공지 수정' : '새 공지 작성', '' +
+      '<div class="form-grid">' +
+        '<label class="field-label" for="noticeTitle">제목</label>' +
+        '<input class="text-input" id="noticeTitle" maxlength="80" placeholder="예) 신메뉴 출시 안내" value="' + esc(editing ? notice.title : '') + '">' +
+        '<label class="field-label" for="noticeCat">분류</label>' +
+        '<select id="noticeCat">' + options.map((c) =>
+          '<option value="' + esc(c) + '"' + (editing && c === (notice.cat || '') ? ' selected' : '') + '>' + (c ? esc(c) : '분류 없음') + '</option>'
+        ).join('') + '</select>' +
+        '<label class="check-item" style="margin-top:10px"><input type="checkbox" id="noticeImportant"' + (editing && notice.important ? ' checked' : '') + '><span>중요 공지로 상단 고정</span></label>' +
+        '<label class="field-label" for="noticeBody">내용</label>' +
+        '<textarea class="text-input" id="noticeBody" rows="6" placeholder="점주가 알아야 할 내용을 입력하세요.">' + esc(editing ? notice.body : '') + '</textarea>' +
+        '<p class="form-error" id="noticeError"></p>' +
+      '</div>' +
+      '<div class="form-actions"><button class="btn btn-ghost" data-close-modal type="button">취소</button>' +
+      '<button class="btn btn-primary" id="saveNotice" type="button">' + (editing ? '수정 저장' : '공지 등록') + '</button></div>');
+
+    $('#noticeTitle').focus();
+
+    $('#saveNotice').addEventListener('click', async () => {
+      const title = $('#noticeTitle').value.trim();
+      const body = $('#noticeBody').value.trim();
+      if (title.length < 4 || body.length < 4) {
+        $('#noticeError').textContent = '제목과 내용을 4자 이상 입력해 주세요.';
+        return;
+      }
+      const cat = $('#noticeCat').value;
+      const important = $('#noticeImportant').checked;
+      const saveBtn = $('#saveNotice');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중…';
+      try {
+        if (editing) {
+          await DB.updateNotice(notice.id, { title, body, category: cat, pinned: important });
+        } else {
+          await DB.createNotice({ title, body, cat, important });
+        }
+        closeModal();
+        await reloadAll();
+        if (editing) {
+          toast('공지를 수정했습니다.');
+          await openNotice(notice.id);
+        } else {
+          toast('공지를 등록했습니다.');
+        }
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = editing ? '수정 저장' : '공지 등록';
+        $('#noticeError').textContent = err.message;
+      }
+    });
+  }
+
+  function confirmDeleteNotice(notice) {
+    openConfirm('공지 삭제',
+      '「' + esc(notice.title) + '」 공지를 삭제합니다.<br>점주 화면에서도 바로 사라지고, 삭제한 공지는 되돌릴 수 없습니다.',
+      '공지 삭제', async () => {
+        await DB.deleteNotice(notice.id);
+        closeModal();
+        await reloadAll();
+        toast('공지를 삭제했습니다.');
+      }, true);
   }
 
   /* ---------- 매뉴얼 체크리스트 · 조리 단계 ---------- */
@@ -1281,36 +1367,7 @@
       if (btn) openNotice(btn.dataset.openNotice);
     });
 
-    $('#newNoticeBtn').addEventListener('click', () => {
-      openModal('새 공지 작성', '' +
-        '<div class="form-grid">' +
-          '<label class="field-label" for="noticeTitle">제목</label>' +
-          '<input class="text-input" id="noticeTitle" placeholder="예) 신메뉴 출시 안내">' +
-          '<label class="field-label" for="noticeCat">분류</label>' +
-          '<select id="noticeCat"><option>신메뉴</option><option>단가변동</option><option>위생점검</option><option>일반</option></select>' +
-          '<label class="check-item" style="margin-top:10px"><input type="checkbox" id="noticeImportant"><span>중요 공지로 상단 고정</span></label>' +
-          '<label class="field-label" for="noticeBody">내용</label>' +
-          '<textarea class="text-input" id="noticeBody" rows="6" placeholder="점주가 알아야 할 내용을 입력하세요."></textarea>' +
-          '<p class="form-error" id="noticeError"></p>' +
-        '</div>' +
-        '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>취소</button>' +
-        '<button class="btn btn-primary" id="saveNotice">공지 등록</button></div>');
-
-      $('#saveNotice').addEventListener('click', async () => {
-        const title = $('#noticeTitle').value.trim();
-        const body = $('#noticeBody').value.trim();
-        if (title.length < 4 || body.length < 4) {
-          $('#noticeError').textContent = '제목과 내용을 4자 이상 입력해 주세요.';
-          return;
-        }
-        await DB.createNotice({
-          title, body, cat: $('#noticeCat').value, important: $('#noticeImportant').checked
-        });
-        closeModal();
-        await reloadAll();
-        toast('공지를 등록했습니다.');
-      });
-    });
+    $('#newNoticeBtn').addEventListener('click', () => openNoticeForm(null));
 
     /* 건의 게시판 */
     $('#newPostBtn').addEventListener('click', () => {

@@ -263,6 +263,39 @@ const LocalAdapter = (() => {
       write('notices', all);
       return record;
     },
+    /* 본사(hq) 전용 — 공지 수정 */
+    async updateNotice(id, patch) {
+      const all = read('notices', []);
+      const found = all.find((n) => n.id === id);
+      if (!found) throw new Error('공지를 찾을 수 없습니다.');
+      const p = patch || {};
+      if (p.title !== undefined) {
+        const title = String(p.title == null ? '' : p.title).trim();
+        if (!title) throw new Error('공지 제목을 입력해 주세요.');
+        found.title = title;
+      }
+      const cat = p.category !== undefined ? p.category : p.cat;
+      if (cat !== undefined) found.cat = String(cat == null ? '' : cat).trim();
+      if (p.body !== undefined) found.body = String(p.body == null ? '' : p.body);
+      const pinned = p.pinned !== undefined ? p.pinned : p.important;
+      if (pinned !== undefined) found.important = !!pinned;
+      found.updatedAt = new Date().toISOString();
+      write('notices', all);
+      return found;
+    },
+    /* 본사(hq) 전용 — 공지 삭제 (매장별 읽음 상태도 함께 정리) */
+    async deleteNotice(id) {
+      const all = read('notices', []);
+      const next = all.filter((n) => n.id !== id);
+      if (next.length === all.length) throw new Error('공지를 찾을 수 없습니다.');
+      write('notices', next);
+      STORE_PROFILES.map((s) => s.id).concat(['hq']).forEach((store) => {
+        const key = 'read:' + store;
+        const list = read(key, []);
+        if (list.includes(id)) write(key, list.filter((x) => x !== id));
+      });
+      return next;
+    },
     async readState(storeId) {
       return read('read:' + storeId, []);
     },
@@ -599,7 +632,10 @@ const SupabaseAdapter = (() => {
     id: r.id, storeId: r.store_id, status: r.status, memo: r.memo || '',
     items: Array.isArray(r.items) ? r.items : [], createdAt: r.created_at, updatedAt: r.updated_at || null
   });
-  const mapNotice = (r) => ({ id: r.id, title: r.title, cat: r.cat || '', important: !!r.important, date: r.created_at, body: r.body || '', comments: [] });
+  const mapNotice = (r) => ({
+    id: r.id, title: r.title, cat: r.cat || '', important: !!r.important,
+    date: r.created_at, updatedAt: r.updated_at || null, body: r.body || '', comments: []
+  });
   const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
   const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
   const mapItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, unit: r.unit || '', price: r.price, note: r.note || '상온', soldOut: !!r.sold_out });
@@ -844,6 +880,30 @@ const SupabaseAdapter = (() => {
       if (!payload.title) throw new Error('공지 제목을 입력해 주세요.');
       const data = await one(client.from('notices').insert(payload).select().single());
       return mapNotice(data);
+    },
+    /* 본사(hq) 전용 — 공지 수정. RLS(notices_write_hq)가 hq 이외의 UPDATE를 0행 처리합니다. */
+    async updateNotice(id, patch) {
+      const p = patch || {};
+      const body = { updated_at: new Date().toISOString() };
+      if (p.title !== undefined) {
+        const title = String(p.title == null ? '' : p.title).trim();
+        if (!title) throw new Error('공지 제목을 입력해 주세요.');
+        body.title = title;
+      }
+      const cat = p.category !== undefined ? p.category : p.cat;
+      if (cat !== undefined) body.cat = String(cat == null ? '' : cat).trim();
+      if (p.body !== undefined) body.body = String(p.body == null ? '' : p.body);
+      const pinned = p.pinned !== undefined ? p.pinned : p.important;
+      if (pinned !== undefined) body.important = !!pinned;
+      const data = await one(client.from('notices').update(body).eq('id', id).select().maybeSingle());
+      if (!data) throw new Error('공지를 수정하지 못했습니다. 본사 관리자 계정으로 다시 시도해 주세요.');
+      return mapNotice(data);
+    },
+    /* 본사(hq) 전용 — 공지 삭제. notice_reads 는 ON DELETE CASCADE 로 함께 정리됩니다. */
+    async deleteNotice(id) {
+      const data = await rows(client.from('notices').delete().eq('id', id).select());
+      if (!data.length) throw new Error('공지를 삭제하지 못했습니다. 본사 관리자 계정으로 다시 시도해 주세요.');
+      return true;
     },
     async readState(storeId) {
       const data = await rows(client.from('notice_reads').select('notice_id').eq('store_id', storeId));
