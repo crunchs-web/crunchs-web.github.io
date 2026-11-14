@@ -109,7 +109,7 @@
     $('#userName').textContent = state.userName || name;
     $('#userRole').textContent = hq ? '본사 관리자' : name + ' 점주';
     $('#userAvatar').textContent = hq ? '본' : name.slice(0, 1);
-    $('#dashStore').textContent = hq ? '본사 · 전체 매장' : name;
+    $('#dashStore').textContent = hq ? '본사' : name;
     $('#newNoticeBtn').hidden = !hq;
     $('#navOrders').hidden = hq;
     $('#newPostBtn').hidden = hq;
