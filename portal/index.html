@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRUNCH'S 점주 포털 | 발주·공지·매뉴얼</title>
+<meta name="description" content="크런치버거 가맹점주 포털 — 식자재 발주, 본사 공지, 조리 매뉴얼, 건의 게시판을 한 곳에서.">
+<meta name="theme-color" content="#0B0F0D">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= 로그인 ================= -->
+<section class="auth" id="loginView">
+  <div class="auth-brand">
+    <img src="assets/hero-signature.jpg" alt="" class="auth-bg" aria-hidden="true">
+    <div class="auth-brand-inner">
+      <img src="assets/logo-light.png" alt="CRUNCH'S 크런치버거" class="auth-logo">
+      <h2>매장 운영의 모든 것,<br>한 화면에서.</h2>
+      <p>발주와 공지, 조리 매뉴얼, 본사 소통까지.<br>크런치버거 점주 포털입니다.</p>
+      <ul class="auth-points">
+        <li><b>발주</b> 카테고리별 품목 · 실시간 상태 확인</li>
+        <li><b>공지</b> 신메뉴 · 단가 · 위생 점검</li>
+        <li><b>매뉴얼</b> 조리 공정 · 체크리스트</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="auth-panel">
+    <form class="auth-form" id="loginForm" novalidate>
+      <img src="assets/logo.png" alt="CRUNCH'S" class="auth-logo-mobile">
+      <p class="eyebrow"><span class="dot"></span> OWNER PORTAL</p>
+      <h1>점주 포털 로그인</h1>
+      <p class="auth-sub">매장과 권한을 선택해 입장하세요.</p>
+
+      <label class="field-label" for="loginStore">매장</label>
+      <div class="select-wrap">
+        <select id="loginStore">
+          <option value="yangsan">양산점</option>
+          <option value="gimhae">김해점</option>
+          <option value="pohang">포항점</option>
+        </select>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+
+      <span class="field-label">권한</span>
+      <div class="role-toggle" role="radiogroup" aria-label="권한 선택">
+        <label class="role-option">
+          <input type="radio" name="role" value="owner" checked>
+          <span>
+            <strong>점주 모드</strong>
+            <small>발주 · 공지 열람 · 건의 작성</small>
+          </span>
+        </label>
+        <label class="role-option">
+          <input type="radio" name="role" value="hq">
+          <span>
+            <strong>본사 관리자</strong>
+            <small>전체 매장 · 공지 작성 · 발주 처리</small>
+          </span>
+        </label>
+      </div>
+
+      <label class="field-label" for="loginName">이름 <span class="opt">(선택)</span></label>
+      <input class="text-input" id="loginName" type="text" placeholder="예) 장성진" autocomplete="name">
+
+      <button type="submit" class="btn btn-primary btn-block">
+        포털 입장
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 11.8 6.7 16.1 11H4v2h12.1l-4.3 4.3 1.4 1.4L20 12z"/></svg>
+      </button>
+      <p class="auth-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"/><path d="M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+        데모 프로토타입입니다. 실제 인증 없이 체험용으로 입장하며, 입력한 데이터는 이 브라우저에만 저장됩니다.
+      </p>
+    </form>
+  </div>
+</section>
+
+<!-- ================= 앱 ================= -->
+<div class="app" id="appView" hidden>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="메뉴 열기" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="topbar-logo" href="#" data-nav="dashboard" aria-label="대시보드로">
+      <img src="assets/logo.png" alt="CRUNCH'S">
+    </a>
+    <div class="topbar-spacer"></div>
+
+    <label class="store-switch" for="storeSelect">
+      <span class="sr-only">매장 · 권한 전환</span>
+      <span class="store-dot" aria-hidden="true"></span>
+      <select id="storeSelect">
+        <optgroup label="점주 모드">
+          <option value="owner:yangsan">양산점 · 점주</option>
+          <option value="owner:gimhae">김해점 · 점주</option>
+          <option value="owner:pohang">포항점 · 점주</option>
+        </optgroup>
+        <optgroup label="본사">
+          <option value="hq:all">본사 관리자 · 전체 매장</option>
+        </optgroup>
+      </select>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </label>
+
+    <button class="icon-btn bell-btn" id="bellBtn" aria-label="알림">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>
+      <span class="bell-dot" id="bellDot" hidden></span>
+    </button>
+
+    <div class="user-chip">
+      <span class="avatar" id="userAvatar">양</span>
+      <span class="user-meta">
+        <strong id="userName">양산점</strong>
+        <small id="userRole">점주 모드</small>
+      </span>
+    </div>
+    <button class="icon-btn logout-btn" id="logoutBtn" aria-label="로그아웃">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
+    </button>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <nav aria-label="주요 메뉴">
+        <p class="side-label">매장 운영</p>
+        <button class="side-link is-active" data-nav="dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6V11h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/></svg><span>대시보드</span></button>
+        <button class="side-link" data-nav="orders" id="navOrders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H3"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg><span>발주하기</span></button>
+        <button class="side-link" data-nav="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>발주 내역</span><em class="side-badge" id="badgeOrders" hidden></em></button>
+        <p class="side-label">본사 소통</p>
+        <button class="side-link" data-nav="notices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 3z"/><path d="M8 9h8M8 12.5h5"/></svg><span>공지사항</span><em class="side-badge" id="badgeNotices" hidden></em></button>
+        <button class="side-link" data-nav="manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M17 7h2v16"/></svg><span>매뉴얼 · 레시피</span></button>
+        <button class="side-link" data-nav="board"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><circle cx="9" cy="10.5" r=".9"/><circle cx="12.5" cy="10.5" r=".9"/><circle cx="16" cy="10.5" r=".9"/></svg><span>건의 게시판</span><em class="side-badge" id="badgeBoard" hidden></em></button>
+        <p class="side-label" id="adminLabel" hidden>관리자</p>
+        <button class="side-link" data-nav="admin" id="navAdmin" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="17" r="2"/></svg><span>관리자 설정</span></button>
+      </nav>
+
+      <div class="side-foot">
+        <div class="side-card">
+          <p class="side-card-title">외부 발주몰</p>
+          <a href="https://www.fooden.com/" target="_blank" rel="noopener noreferrer">푸드엔 식자재마트 <span aria-hidden="true">↗</span></a>
+          <a href="https://biz.baemin.com/" target="_blank" rel="noopener noreferrer">배민 사장님광장 <span aria-hidden="true">↗</span></a>
+          <a href="https://ceo.yogiyo.co.kr/" target="_blank" rel="noopener noreferrer">요기요 사장님 사이트 <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="side-version">CRUNCH'S Portal · v1.0 demo</p>
+        <button class="side-logout" data-logout>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
+          로그아웃
+        </button>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+
+      <!-- ---------- 대시보드 ---------- -->
+      <section class="view is-active" data-view="dashboard">
+        <div class="view-head">
+          <div>
+            <p class="crumb">대시보드</p>
+            <h1><span id="dashStore">양산점</span>, 오늘도 좋은 하루입니다.</h1>
+            <p class="view-sub" id="dashDate">—</p>
+          </div>
+          <div class="head-actions" id="dashActions">
+            <button class="btn btn-ghost" data-nav="manual">오늘의 체크리스트</button>
+            <button class="btn btn-primary" data-nav="orders">
+              발주하기
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 11.8 6.7 16.1 11H4v2h12.1l-4.3 4.3 1.4 1.4L20 12z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi">
+            <span class="kpi-icon kpi-icon--green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg></span>
+            <p class="kpi-label">이번 달 발주</p>
+            <p class="kpi-value"><strong id="kpiMonthOrders">0</strong>건</p>
+            <p class="kpi-foot" id="kpiMonthAmount">합계 0원</p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon kpi-icon--amber"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <p class="kpi-label">접수 대기</p>
+            <p class="kpi-value"><strong id="kpiPending">0</strong>건</p>
+            <p class="kpi-foot" id="kpiPendingFoot">처리 대기 중인 발주</p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon kpi-icon--blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 3z"/><path d="M8 9h8M8 12.5h5"/></svg></span>
+            <p class="kpi-label">읽지 않은 공지</p>
+            <p class="kpi-value"><strong id="kpiUnread">0</strong>건</p>
+            <p class="kpi-foot" id="kpiUnreadFoot">본사 공지 확인 필요</p>
+          </article>
+          <article class="kpi">
+            <span class="kpi-icon kpi-icon--violet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10.5h6"/></svg></span>
+            <p class="kpi-label">건의 · 문의</p>
+            <p class="kpi-value"><strong id="kpiPosts">0</strong>건</p>
+            <p class="kpi-foot" id="kpiPostsFoot">답변 대기 0건</p>
+          </article>
+        </div>
+
+        <div class="dash-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>최근 발주</h2>
+              <button class="link-btn" data-nav="history">전체 보기 →</button>
+            </div>
+            <div id="dashOrders" class="mini-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>중요 공지</h2>
+              <button class="link-btn" data-nav="notices">전체 보기 →</button>
+            </div>
+            <div id="dashNotices" class="mini-list"></div>
+          </section>
+        </div>
+
+        <section class="panel quick">
+          <div class="panel-head"><h2>바로가기</h2></div>
+          <div class="quick-grid">
+            <a class="quick-card" href="https://www.fooden.com/" target="_blank" rel="noopener noreferrer">
+              <span class="quick-emoji" aria-hidden="true">🥬</span>
+              <strong>푸드엔 발주몰</strong>
+              <small>기존 외부 식자재 발주</small>
+            </a>
+            <button class="quick-card" data-nav="manual">
+              <span class="quick-emoji" aria-hidden="true">📖</span>
+              <strong>조리 매뉴얼</strong>
+              <small>튀김 온도 · 조리 공정</small>
+            </button>
+            <button class="quick-card" data-nav="notices">
+              <span class="quick-emoji" aria-hidden="true">📌</span>
+              <strong>본사 공지</strong>
+              <small>신메뉴 · 단가 · 점검</small>
+            </button>
+            <button class="quick-card" data-nav="board">
+              <span class="quick-emoji" aria-hidden="true">💬</span>
+              <strong>건의 게시판</strong>
+              <small>본사에 문의하기</small>
+            </button>
+          </div>
+        </section>
+      </section>
+
+      <!-- ---------- 발주하기 ---------- -->
+      <section class="view" data-view="orders">
+        <div class="view-head">
+          <div>
+            <p class="crumb">발주</p>
+            <h1>식자재 · 물품 발주</h1>
+            <p class="view-sub">필요한 품목을 담고 발주를 신청하세요. 신청 후 <b>발주 내역</b>에서 상태를 확인할 수 있습니다.</p>
+          </div>
+          <button class="cart-fab" id="cartFab" type="button">
+            <span>발주 바구니 <b id="fabCount">0</b></span>
+            <strong id="fabTotal">0원</strong>
+          </button>
+        </div>
+
+        <div class="order-layout">
+          <div class="catalog">
+            <div class="catalog-tools">
+              <div class="chip-row" id="catChips" role="tablist" aria-label="카테고리"></div>
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+                <input type="search" id="catalogSearch" placeholder="품목 검색" aria-label="품목 검색">
+              </div>
+            </div>
+            <div class="item-grid" id="catalogList"></div>
+            <p class="demo-note">※ 품목과 단가는 시안용 예시 데이터입니다. 실제 단가는 본사 발주 계정 기준으로 적용됩니다.</p>
+          </div>
+
+          <aside class="cart-panel" id="cartPanel" aria-label="발주 바구니">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="cart-head">
+              <h2>발주 바구니</h2>
+              <button class="icon-btn cart-close" id="cartClose" aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <div class="cart-body" id="cartList">
+              <p class="cart-empty">담긴 품목이 없습니다.<br>왼쪽 목록에서 품목을 추가하세요.</p>
+            </div>
+            <div class="cart-foot">
+              <div class="cart-sum">
+                <span>합계</span>
+                <strong id="cartTotal">0원</strong>
+              </div>
+              <label class="field-label" for="deliveryDate">배송 요청일</label>
+              <input class="text-input" type="date" id="deliveryDate">
+              <label class="field-label" for="orderMemo">요청 사항</label>
+              <textarea class="text-input" id="orderMemo" rows="2" placeholder="예) 오전 배송 희망"></textarea>
+              <button class="btn btn-primary btn-block" id="submitOrder">발주 신청</button>
+              <p class="cart-note">신청 즉시 접수대기 상태로 발주 내역에 기록됩니다.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ---------- 발주 내역 ---------- -->
+      <section class="view" data-view="history">
+        <div class="view-head">
+          <div>
+            <p class="crumb">발주</p>
+            <h1>발주 내역</h1>
+            <p class="view-sub" id="historySub">접수대기 → 본사확인 → 출고완료 순서로 진행됩니다.</p>
+          </div>
+          <button class="btn btn-primary" data-nav="orders">새 발주</button>
+        </div>
+
+        <div class="filter-row" id="statusFilter">
+          <button class="filter is-active" data-status="all">전체</button>
+          <button class="filter" data-status="pending">접수대기</button>
+          <button class="filter" data-status="confirmed">본사확인</button>
+          <button class="filter" data-status="shipped">출고완료</button>
+        </div>
+
+        <div id="orderList" class="order-list"></div>
+      </section>
+
+      <!-- ---------- 공지사항 ---------- -->
+      <section class="view" data-view="notices">
+        <div class="view-head">
+          <div>
+            <p class="crumb">본사 소통</p>
+            <h1>공지사항</h1>
+            <p class="view-sub">신메뉴 · 단가변동 · 위생점검 등 본사 공지를 확인하세요.</p>
+          </div>
+          <button class="btn btn-primary" id="newNoticeBtn" hidden>새 공지 작성</button>
+        </div>
+        <div class="filter-row" id="noticeFilter">
+          <button class="filter is-active" data-cat="all">전체</button>
+          <button class="filter" data-cat="신메뉴">신메뉴</button>
+          <button class="filter" data-cat="단가변동">단가변동</button>
+          <button class="filter" data-cat="위생점검">위생점검</button>
+        </div>
+        <div id="noticeList" class="notice-list"></div>
+      </section>
+
+      <!-- ---------- 매뉴얼 ---------- -->
+      <section class="view" data-view="manual">
+        <div class="view-head">
+          <div>
+            <p class="crumb">매뉴얼</p>
+            <h1>매뉴얼 · 레시피</h1>
+            <p class="view-sub">버거 조리 공정과 튀김 가이드, 오픈·마감 체크리스트입니다.</p>
+          </div>
+          <div class="progress-pill" id="checkProgress">오늘 체크 0/0</div>
+        </div>
+
+        <div class="manual-grid">
+          <details class="manual-card" open>
+            <summary>
+              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M6 8h9l-1.5 3L15 14H6z"/></svg></span>
+              <span class="manual-title">
+                <strong>버거 조리 공정</strong>
+                <small>시그니처 버거 기준 5단계</small>
+              </span>
+              <span class="manual-chev" aria-hidden="true">⌄</span>
+            </summary>
+            <ol class="recipe-steps" id="recipeSteps"></ol>
+          </details>
+
+          <details class="manual-card">
+            <summary>
+              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c2 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1-3"/><path d="M12 21v-3"/></svg></span>
+              <span class="manual-title">
+                <strong>튀김 온도 · 시간 가이드</strong>
+                <small>품목별 기준표</small>
+              </span>
+              <span class="manual-chev" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="table-scroll">
+              <table class="guide-table">
+                <thead><tr><th>품목</th><th>온도</th><th>1차</th><th>2차</th><th>비고</th></tr></thead>
+                <tbody>
+                  <tr><td>치킨 패티</td><td>175℃</td><td>2분 30초</td><td>1분 30초</td><td>2차 전 3분 휴지</td></tr>
+                  <tr><td>새우 패티</td><td>170℃</td><td>2분</td><td>1분</td><td>과튀김 주의</td></tr>
+                  <tr><td>치킨 윙</td><td>175℃</td><td>5분</td><td>3분</td><td>중심 74℃ 이상</td></tr>
+                  <tr><td>감자튀김</td><td>180℃</td><td>3분</td><td>—</td><td>소금 2g</td></tr>
+                  <tr><td>치즈볼</td><td>170℃</td><td>1분 40초</td><td>—</td><td>터짐 방지 저온</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="manual-tip">튀김유는 하루 1회 이상 여과하고, 산가 측정 2.0 초과 시 교체합니다.</p>
+          </details>
+
+          <details class="manual-card">
+            <summary>
+              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg></span>
+              <span class="manual-title">
+                <strong>오픈 체크리스트</strong>
+                <small>영업 시작 전 확인</small>
+              </span>
+              <span class="manual-chev" aria-hidden="true">⌄</span>
+            </summary>
+            <ul class="check-items" data-checklist="open"></ul>
+          </details>
+
+          <details class="manual-card">
+            <summary>
+              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a4 4 0 0 1 0 8H7a4 4 0 0 1 0-8z"/><path d="M7 11v10M17 11v10"/></svg></span>
+              <span class="manual-title">
+                <strong>마감 체크리스트</strong>
+                <small>영업 종료 후 확인</small>
+              </span>
+              <span class="manual-chev" aria-hidden="true">⌄</span>
+            </summary>
+            <ul class="check-items" data-checklist="close"></ul>
+          </details>
+        </div>
+      </section>
+
+      <!-- ---------- 건의 게시판 ---------- -->
+      <section class="view" data-view="board">
+        <div class="view-head">
+          <div>
+            <p class="crumb">본사 소통</p>
+            <h1>건의 · 소통 게시판</h1>
+            <p class="view-sub">현장의 의견을 남겨주세요. 본사 담당자가 확인 후 답변합니다.</p>
+          </div>
+          <button class="btn btn-primary" id="newPostBtn">글쓰기</button>
+        </div>
+        <div id="postList" class="post-list"></div>
+      </section>
+
+      <!-- ---------- 관리자 설정 (본사 전용) ---------- -->
+      <section class="view" data-view="admin">
+        <div class="view-head">
+          <div>
+            <p class="crumb">본사 관리자</p>
+            <h1>관리자 설정</h1>
+            <p class="view-sub">발주 카테고리·품목과 매뉴얼·체크리스트를 코드 없이 직접 관리합니다. 저장한 내용은 점주 화면에 바로 반영됩니다.</p>
+          </div>
+        </div>
+
+        <div class="admin-summary">
+          <article class="admin-kpi"><span>발주 카테고리</span><strong id="adminCatCount">0</strong></article>
+          <article class="admin-kpi"><span>발주 품목</span><strong id="adminItemCount">0</strong></article>
+          <article class="admin-kpi"><span>매뉴얼 · 체크 항목</span><strong id="adminManualCount">0</strong></article>
+        </div>
+
+        <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="관리자 설정 구분">
+          <button class="admin-tab is-active" data-admin-tab="categories" role="tab" aria-selected="true">카테고리 관리</button>
+          <button class="admin-tab" data-admin-tab="items" role="tab" aria-selected="false">발주 품목 관리</button>
+          <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 · 체크리스트</button>
+          <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업 · 초기화</button>
+        </div>
+
+        <!-- 카테고리 -->
+        <section class="admin-panel" data-admin-panel="categories">
+          <div class="admin-toolbar">
+            <div class="admin-inline-form">
+              <input class="text-input" id="adminCatName" maxlength="20" placeholder="새 카테고리 이름 (예: 음료)">
+              <button class="btn btn-primary" id="adminCatAdd" type="button">카테고리 추가</button>
+            </div>
+            <p class="admin-hint">이름을 바꾸면 해당 카테고리 품목도 함께 옮겨집니다. 삭제할 때는 품목을 다른 카테고리로 옮기거나 함께 삭제할 수 있습니다.</p>
+          </div>
+          <div class="admin-list" id="adminCatList"></div>
+        </section>
+
+        <!-- 발주 품목 -->
+        <section class="admin-panel" data-admin-panel="items" hidden>
+          <div class="admin-toolbar">
+            <div class="admin-filters">
+              <select id="adminItemCatFilter" aria-label="카테고리 필터"></select>
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+                <input type="search" id="adminItemSearch" placeholder="품목 검색" aria-label="품목 검색">
+              </div>
+            </div>
+            <div class="admin-toolbar-actions">
+              <button class="btn btn-primary btn-sm" id="adminItemAdd" type="button">+ 품목 추가</button>
+            </div>
+            <p class="admin-hint">품절로 바꾸면 점주 발주 화면에서 담기가 막히고 <b>품절</b> 표시가 붙습니다.</p>
+          </div>
+          <div class="admin-list" id="adminItemList"></div>
+        </section>
+
+        <!-- 매뉴얼 · 체크리스트 -->
+        <section class="admin-panel" data-admin-panel="manuals" hidden>
+          <div id="adminManualGroups"></div>
+        </section>
+
+        <!-- 백업 · 초기화 -->
+        <section class="admin-panel" data-admin-panel="backup" hidden>
+          <div class="admin-backup">
+            <div class="admin-backup-col">
+              <h3>JSON 내보내기</h3>
+              <p>현재 카테고리·품목·매뉴얼 설정을 파일로 저장합니다. 아래 내용을 복사해 보관해도 됩니다.</p>
+              <div class="admin-toolbar-actions">
+                <button class="btn btn-primary btn-sm" id="adminExport" type="button">JSON 내려받기</button>
+                <button class="btn btn-ghost btn-sm" id="adminCopy" type="button">복사</button>
+              </div>
+              <textarea class="text-input admin-json" id="adminBackupText" rows="14" spellcheck="false" aria-label="설정 JSON"></textarea>
+            </div>
+            <div class="admin-backup-col">
+              <h3>가져오기 · 초기화</h3>
+              <p>내보낸 파일을 불러오거나, 붙여넣은 JSON을 그대로 적용할 수 있습니다.</p>
+              <div class="admin-toolbar-actions">
+                <label class="btn btn-ghost btn-sm" for="adminImportFile">파일 선택</label>
+                <input type="file" id="adminImportFile" accept="application/json,.json" hidden>
+                <button class="btn btn-primary btn-sm" id="adminImportText" type="button">입력한 JSON 적용</button>
+                <button class="btn btn-ghost btn-sm is-danger" id="adminReset" type="button">기본값으로 초기화</button>
+              </div>
+              <p class="admin-hint">초기화는 카테고리·품목·매뉴얼을 처음 예시 데이터로 되돌리고 체크리스트 체크 상태를 비웁니다. 발주 내역·공지·건의는 그대로 유지됩니다.</p>
+              <div class="admin-backup-status">
+                <p class="admin-backup-status-title">현재 저장된 설정</p>
+                <ul>
+                  <li><span>발주 카테고리</span><b id="adminBackupCat">0</b></li>
+                  <li><span>발주 품목</span><b id="adminBackupItem">0</b></li>
+                  <li><span>매뉴얼 · 체크 항목</span><b id="adminBackupManual">0</b></li>
+                </ul>
+                <p class="admin-hint">내보낸 JSON은 다른 브라우저나 새 기기에서 그대로 가져와 쓸 수 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= 모달 / 토스트 ================= -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <header class="modal-head">
+      <h2 id="modalTitle">—</h2>
+      <button class="icon-btn" data-close-modal aria-label="닫기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span class="toast-icon" aria-hidden="true">✓</span>
+  <span id="toastText">저장되었습니다.</span>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
