@@ -70,6 +70,27 @@
     reveals.forEach(function (el) { el.classList.add('is-visible'); });
   }
 
+  /* ---------- FAQ 아코디언 ---------- */
+  var faqList = document.getElementById('faqList');
+  if (faqList) {
+    var faqButtons = Array.prototype.slice.call(faqList.querySelectorAll('.faq-q'));
+
+    function setFaq(btn, open) {
+      var item = btn.closest('.faq-item');
+      if (!item) return;
+      item.classList.toggle('is-open', open);
+      btn.setAttribute('aria-expanded', String(open));
+    }
+
+    faqButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var willOpen = btn.getAttribute('aria-expanded') !== 'true';
+        faqButtons.forEach(function (other) { if (other !== btn) setFaq(other, false); });
+        setFaq(btn, willOpen);
+      });
+    });
+  }
+
   /* ---------- 가맹 상담 폼 ---------- */
   var form = document.getElementById('franchiseForm');
   var success = document.getElementById('formSuccess');
