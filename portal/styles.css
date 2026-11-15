@@ -229,6 +229,8 @@ textarea { resize: vertical; }
 .invite-badge.is-dead { background: #F3F4F3; color: var(--faint); }
 .invite-badge.is-hq { background: var(--ink); color: #fff; }
 .invite-badge.is-owner { background: #F1F3F1; color: var(--mute); }
+/* 현재 로그인한 본인 행 — 추방 버튼 대신 표시 */
+.invite-badge.is-self { background: var(--green-50); color: var(--green-800); border: 1px solid #C9E9D6; flex: none; }
 
 /* ---------- 관리자 설정 · 회원 관리 ---------- */
 .member-summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }

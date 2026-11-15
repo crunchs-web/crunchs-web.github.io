@@ -11,6 +11,7 @@
   const state = {
     role: 'owner',
     storeId: 'yangsan',
+    userId: '',
     userName: '',
     storeTitle: '',
     view: 'dashboard',
@@ -98,6 +99,7 @@
      ========================================================================== */
   function applySession(session) {
     state.role = session.role;
+    state.userId = session.userId || '';
     state.storeId = session.role === 'hq' ? 'all' : session.storeId;
     state.userName = session.ownerName || '';
     state.storeTitle = session.storeName || storeName(session.storeId);
@@ -962,11 +964,18 @@
       const roleLabel = hq ? '본사 관리자' : '점주';
       const store = hq ? '본사' : (m.storeName || '지점 미지정');
       const meta = [store, '아이디 ' + (m.loginId || '-'), '가입 ' + fmtDate(m.joinedAt)].join(' · ');
+      /* 로그인한 본인 행에는 추방 버튼 대신 「본인」 배지를 보여 줍니다. */
+      const isSelf = !!state.userId && m.id === state.userId;
+      const action = isSelf
+        ? '<span class="invite-badge is-self" title="현재 로그인한 계정">본인</span>'
+        : '<div class="admin-row-actions"><button type="button" class="btn btn-danger btn-sm" data-member-kick="' +
+            esc(m.id) + '">추방</button></div>';
       return '<div class="admin-row" data-member-id="' + esc(m.id) + '">' +
         '<span class="member-avatar' + (hq ? ' is-hq' : '') + '">' + esc(name.slice(0, 1)) + '</span>' +
         '<span class="admin-row-main"><strong>' + esc(name) +
           '<span class="invite-badge ' + (hq ? 'is-hq' : 'is-owner') + '">' + roleLabel + '</span></strong>' +
           '<small>' + esc(meta) + '</small></span>' +
+        action +
       '</div>';
     }).join('');
   }
@@ -1828,6 +1837,32 @@
       if (memberChip) {
         state.memberRole = memberChip.dataset.memberRole;
         renderAdminMembers();
+        return;
+      }
+
+      const memberKick = e.target.closest('[data-member-kick]');
+      if (memberKick) {
+        const id = memberKick.dataset.memberKick;
+        const m = (state.members || []).find((x) => x.id === id);
+        if (!m) return;
+        if (state.userId && id === state.userId) { toast('본인 계정은 추방할 수 없습니다.'); return; }
+        const targetHq = m.role === 'hq';
+        const label = m.ownerName || (targetHq ? '본사 관리자' : '이름 미등록');
+        const lines = ['이름 <b>' + esc(label) + '</b>',
+          '지점 <b>' + esc(targetHq ? '본사' : (m.storeName || '지점 미지정')) + '</b>',
+          '아이디 <b>' + esc(m.loginId || '-') + '</b>'].join('<br>');
+        openConfirm('회원 추방',
+          lines +
+          '<br><br>이 계정을 추방하면 <b>바로 삭제</b>되어 다시 로그인할 수 없습니다.<br>' +
+          '작성한 건의글은 지점 기록으로 남고, 사용한 초대 코드는 함께 폐기됩니다.',
+          '추방', async () => {
+            await DB.deleteMember(id);
+            closeModal();
+            state.members = await DB.listMembers();
+            renderAdminMembers();
+            if ($('#adminMemberCount')) $('#adminMemberCount').textContent = state.members.length;
+            toast('「' + label + '」 계정을 추방했습니다.');
+          }, true);
         return;
       }
 

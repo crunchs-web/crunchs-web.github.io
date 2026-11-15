@@ -224,6 +224,8 @@ const LocalAdapter = (() => {
     /* 초대 코드·회원 목록은 Supabase 전용입니다. localStorage 모드에서는 비어 있습니다. */
     async listInviteCodes() { return []; },
     async listMembers() { return []; },
+    /* 회원 추방도 Supabase 전용입니다(계정 삭제는 서버만 할 수 있습니다). */
+    async deleteMember() { throw new Error('개발용(localStorage) 모드에서는 회원을 추방할 수 없습니다.'); },
 
     /* --- 발주 --- */
     async listOrders(storeId) {
@@ -1103,6 +1105,27 @@ const SupabaseAdapter = (() => {
         email: r.email,
         joinedAt: r.joined_at
       }));
+    },
+
+    /* ======================================================================
+       회원 추방(계정 삭제) — 본사 전용 · 관리자 설정 → 회원 관리
+       ----------------------------------------------------------------------
+       서버 함수 delete_member(uuid) 가 첫 줄에서 is_hq() 를 확인하고
+       본인 계정(MEMBER_DELETE_SELF)을 거부합니다. auth.users 를 지우면
+       profiles·auth.identities·auth.sessions 가 CASCADE 로 정리됩니다.
+       ====================================================================== */
+    async deleteMember(userId) {
+      if (!userId) throw new Error('추방할 회원을 찾지 못했습니다.');
+      const { data, error } = await client.rpc('delete_member', { target_user_id: userId });
+      if (error) {
+        const msg = String(error.message || '');
+        if (/MEMBER_DELETE_FORBIDDEN/.test(msg)) throw new Error('본사 관리자만 회원을 추방할 수 있습니다.');
+        if (/MEMBER_DELETE_SELF/.test(msg)) throw new Error('본인 계정은 추방할 수 없습니다.');
+        if (/MEMBER_NOT_FOUND/.test(msg)) throw new Error('이미 삭제된 회원입니다. 목록을 새로 고쳐 주세요.');
+        if (/MEMBER_DELETE_NO_TARGET/.test(msg)) throw new Error('추방할 회원을 찾지 못했습니다.');
+        fail(error);
+      }
+      return data;
     },
 
     /* ======================================================================
