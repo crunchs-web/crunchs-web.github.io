@@ -99,6 +99,8 @@
     /* 계정 전환 시 이전 계정의 숫자가 잠시 보이지 않도록 초기화 */
     ['#kpiMonthOrders', '#kpiMonthAmount', '#kpiPending', '#kpiUnread', '#kpiPosts', '#dashDate']
       .forEach((sel) => { const el = $(sel); if (el) el.textContent = sel === '#dashDate' ? '' : '—'; });
+    /* 이전 계정(본사)의 글·발주 목록이 새 계정 화면에 잠깐 남지 않도록 목록도 비웁니다 */
+    ['#postList', '#dashOrders', '#dashNotices'].forEach((sel) => { const el = $(sel); if (el) el.innerHTML = ''; });
     $('#appView').hidden = false;
     $('#loginView').hidden = true;
     const label = session.role === 'hq'
