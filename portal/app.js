@@ -215,6 +215,9 @@
     if (signingUp) {
       fillStoreOptions();
       applySignupRole(null);
+      /* 적어 둔 초대 코드가 있으면 다시 검증해 역할(점주/본사)에 맞춰 화면을 되돌립니다. */
+      if ($('#signupCode') && $('#signupCode').value.trim()) checkInviteCode();
+      else setSignupHint('', null);
       const code = $('#signupCode'); if (code) code.focus();
     } else {
       const id = $('#loginId'); if (id) id.focus();
