@@ -214,9 +214,12 @@ textarea { resize: vertical; }
 /* 초대 코드 폼 */
 .invite-form { flex-wrap: wrap; }
 .invite-form select {
+  width: auto; flex: 0 1 auto;
   height: 38px; border-radius: 10px; border: 1px solid var(--line-strong); padding: 0 10px;
-  font-family: inherit; font-size: 13px; background: #fff; color: var(--text); min-width: 190px;
+  font-family: inherit; font-size: 13px; background: #fff; color: var(--text); min-width: 118px;
 }
+.invite-form #inviteStore { min-width: 190px; }
+.invite-form #inviteMemo { flex: 1 1 190px; max-width: 260px; }
 .invite-form .invite-days { max-width: 92px; }
 .invite-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; letter-spacing: .06em; }
 .invite-badge { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
@@ -877,6 +880,7 @@ textarea { resize: vertical; }
   .admin-tab { padding: 7px 11px; font-size: 11.5px; }
   .admin-inline-form { flex-wrap: wrap; }
   .admin-inline-form .text-input { flex: 1 1 100%; }
+  .invite-form select, .invite-form #inviteMemo { width: 100%; max-width: none; flex: 1 1 100%; }
   .admin-inline-form .btn { flex: 1 1 auto; }
   .admin-toolbar { flex-direction: column; align-items: stretch; }
   .admin-toolbar .admin-filters { flex: 0 0 auto; }
