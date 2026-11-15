@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261115e">
+<link rel="stylesheet" href="styles.css?v=20261115f">
 </head>
 <body>
 
@@ -157,6 +157,13 @@
 
   <div class="shell">
     <aside class="sidebar" id="sidebar">
+      <div class="side-account" id="sideAccount">
+        <span class="side-account-avatar" id="sideAvatar">양</span>
+        <span class="side-account-meta">
+          <strong id="sideName">양산점</strong>
+          <small id="sideRole">점주 모드</small>
+        </span>
+      </div>
       <nav aria-label="주요 메뉴">
         <p class="side-label">매장 운영</p>
         <button class="side-link is-active" data-nav="dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6V11h-6zM4 20h6v-4H4zM14 8h6V4h-6z"/></svg><span>대시보드</span></button>
@@ -192,7 +199,7 @@
         <div class="view-head">
           <div>
             <p class="crumb">대시보드</p>
-            <h1><span id="dashStore">양산점</span>, 오늘도 좋은 하루입니다.</h1>
+            <h1 id="dashGreeting"><span class="dash-name" id="dashName">양산점</span><span class="dash-scope" id="dashStore"></span>, 오늘도 좋은 하루입니다.</h1>
             <p class="view-sub" id="dashDate">—</p>
           </div>
           <div class="head-actions" id="dashActions">
@@ -609,7 +616,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261115e"></script>
-<script src="app.js?v=20261115e"></script>
+<script src="data.js?v=20261115f"></script>
+<script src="app.js?v=20261115f"></script>
 </body>
 </html>

@@ -113,10 +113,23 @@
   function updateChrome() {
     const hq = isHQ();
     const name = hq ? '본사 관리자' : storeName(state.storeId);
-    $('#userName').textContent = state.userName || name;
+    /* 로그인한 사람(profiles.owner_name)을 화면 곳곳에서 같은 이름으로 보여 줍니다. */
+    const scope = hq ? '본사' : name;
+    const person = state.userName || '';
+    const accountName = person || (hq ? '본사 관리자' : name);
+    const avatarText = person ? person.slice(0, 1) : (hq ? '본' : name.slice(0, 1));
+    $('#userName').textContent = accountName;
     $('#userRole').textContent = hq ? '본사 관리자' : name + ' 점주';
-    $('#userAvatar').textContent = hq ? '본' : name.slice(0, 1);
-    $('#dashStore').textContent = hq ? '본사' : name;
+    $('#userAvatar').textContent = avatarText;
+    /* 대시보드 인사말: 장성진님 (본사·양산점), 오늘도 좋은 하루입니다. (이름 없으면 지점명만)
+       owner_name이 이미 지점명을 품고 있으면('김해진영비앤비점 점주' 등) 괄호를 붙이지 않습니다. */
+    const nameHasScope = person && (person.indexOf(scope) >= 0 || person.length > 8);
+    if ($('#dashName')) $('#dashName').textContent = person ? person + '님' : scope;
+    if ($('#dashStore')) $('#dashStore').textContent = person && !nameHasScope ? ' (' + scope + ')' : '';
+    /* 모바일 햄버거 메뉴 상단 계정 카드 */
+    if ($('#sideAvatar')) $('#sideAvatar').textContent = avatarText;
+    if ($('#sideName')) $('#sideName').textContent = accountName;
+    if ($('#sideRole')) $('#sideRole').textContent = hq ? '본사 관리자 · 전체 매장' : name + ' 점주';
     $('#newNoticeBtn').hidden = !hq;
     $('#navOrders').hidden = hq;
     $('#newPostBtn').hidden = hq;
