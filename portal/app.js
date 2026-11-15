@@ -320,7 +320,9 @@
     $('#kpiUnread').textContent = unread;
     $('#kpiUnreadFoot').textContent = unread ? '확인하지 않은 본사 공지' : '모든 공지를 확인했습니다';
     $('#kpiPosts').textContent = state.posts.length;
-    $('#kpiPostsFoot').textContent = '답변 대기 ' + waiting + '건';
+    $('#kpiPostsFoot').textContent = isHQ()
+      ? '답변 대기 ' + waiting + '건'
+      : '내가 쓴 글 · 답변 대기 ' + waiting + '건';
 
     /* 최근 발주 */
     const recent = state.orders.slice(0, 3);
@@ -642,14 +644,18 @@
     if (p) p.textContent = '오늘 체크 ' + done + '/' + items.length;
   }
 
-  /* ---------- 게시판 ---------- */
+  /* ---------- 게시판 (점주 글은 비공개) ---------- */
   function renderPosts() {
+    const note = $('#boardPrivacyNote');
+    if (note) note.hidden = isHQ();
     $('#postList').innerHTML = state.posts.length ? state.posts.map((p) => {
       const answered = p.comments.length > 0;
       return '<button class="post-card" data-open-post="' + esc(p.id) + '">' +
         '<div class="post-top">' +
           '<span class="state-pill' + (answered ? ' is-answered' : '') + '">' + (answered ? '답변완료' : '답변대기') + '</span>' +
-          (isHQ() ? '<span class="mini-tag">' + esc(storeName(p.storeId)) + '</span>' : '') +
+          (isHQ()
+            ? '<span class="mini-tag">' + esc(storeName(p.storeId)) + '</span>'
+            : '<span class="mini-tag private-tag" title="본사 관리자와 작성자 본인만 볼 수 있습니다">비공개</span>') +
         '</div>' +
         '<p class="post-title">' + esc(p.title) + '</p>' +
         '<p class="post-snippet">' + esc(p.body.slice(0, 80)) + '</p>' +
@@ -673,18 +679,36 @@
     openModal('건의 · 소통', '' +
       '<div class="post-top" style="margin-bottom:8px">' +
         '<span class="state-pill' + (p.comments.length ? ' is-answered' : '') + '">' + (p.comments.length ? '답변완료' : '답변대기') + '</span>' +
-        '<span class="post-date">' + esc(storeName(p.storeId)) + ' · ' + fmtDateTime(p.date) + '</span>' +
+        (isHQ()
+          ? '<span class="mini-tag">' + esc(storeName(p.storeId)) + '</span>'
+          : '<span class="mini-tag private-tag">비공개</span>') +
+        '<span class="post-date">' + (isHQ() ? esc(storeName(p.storeId)) + ' · ' : '') + fmtDateTime(p.date) + '</span>' +
       '</div>' +
       '<h3 style="font-size:16px;font-weight:800;letter-spacing:-.02em;margin-bottom:10px">' + esc(p.title) + '</h3>' +
       '<p class="thread-post" style="margin-bottom:16px">' + esc(p.body) + '</p>' +
+      (isHQ() ? '' : '<p class="hint-box" style="margin-bottom:14px">이 글은 <strong>본사 관리자와 작성자 본인에게만</strong> 공개됩니다. 다른 지점 점주에게는 보이지 않습니다.</p>') +
       '<h4 style="font-size:12.5px;font-weight:800;color:var(--mute);margin-bottom:8px">본사 답변 ' + p.comments.length + '</h4>' +
       '<div class="thread">' + comments + '</div>' +
       (isHQ() ? '<div class="thread-form"><label class="field-label" for="replyBody">답변 작성</label>' +
         '<textarea class="text-input" id="replyBody" rows="3" placeholder="점주에게 전달할 답변을 입력하세요."></textarea>' +
         '<p class="form-error" id="replyError"></p>' +
-        '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>닫기</button>' +
+        '<div class="form-actions"><button class="btn btn-danger btn-sm" type="button" data-delete-post="' + esc(p.id) + '" style="margin-right:auto">삭제</button>' +
+        '<button class="btn btn-ghost" data-close-modal>닫기</button>' +
         '<button class="btn btn-primary" data-reply="' + esc(p.id) + '">답변 등록</button></div></div>'
         : '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>닫기</button></div>'));
+  }
+
+  /* 본사(hq) 전용 — 건의 글 삭제 (본사 답변은 ON DELETE CASCADE 로 함께 삭제) */
+  function confirmDeletePost(post) {
+    if (!isHQ()) return;
+    openConfirm('건의 글 삭제',
+      '「' + esc(post.title) + '」 글을 삭제합니다.<br>본사 답변도 함께 삭제되고, 삭제한 글은 되돌릴 수 없습니다.',
+      '글 삭제', async () => {
+        await DB.deleteBoardPost(post.id);
+        closeModal();
+        await reloadAll();
+        toast('건의 글을 삭제했습니다.');
+      }, true);
   }
 
   /* ==========================================================================
@@ -1373,7 +1397,7 @@
     $('#newPostBtn').addEventListener('click', () => {
       openModal('글쓰기', '' +
         '<div class="form-grid">' +
-          '<p class="hint-box">' + esc(isHQ() ? '본사 관리자 계정으로 작성합니다.' : storeName(state.storeId) + ' 명의로 등록됩니다.') + '</p>' +
+          '<p class="hint-box">' + esc(isHQ() ? '본사 관리자 계정으로 작성합니다.' : storeName(state.storeId) + ' 명의로 등록되며, 이 글은 본사 관리자와 작성자 본인에게만 공개됩니다.') + '</p>' +
           '<label class="field-label" for="postTitle">제목</label>' +
           '<input class="text-input" id="postTitle" placeholder="예) 주말 발주 마감 시간 문의">' +
           '<label class="field-label" for="postBody">내용</label>' +
@@ -1400,6 +1424,13 @@
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-open-post]');
       if (btn) openPost(btn.dataset.openPost);
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-delete-post]');
+      if (!btn) return;
+      const post = state.posts.find((x) => x.id === btn.dataset.deletePost);
+      if (post) confirmDeletePost(post);
     });
 
     document.addEventListener('click', async (e) => {

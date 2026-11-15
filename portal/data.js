@@ -321,6 +321,13 @@ const LocalAdapter = (() => {
       write('posts', all);
       return record;
     },
+    async deleteBoardPost(id) {
+      const all = read('posts', []);
+      const next = all.filter((p) => p.id !== id);
+      if (next.length === all.length) throw new Error('글을 찾을 수 없습니다.');
+      write('posts', next);
+      return true;
+    },
     async addComment(postId, comment) {
       const all = read('posts', []);
       const found = all.find((p) => p.id === postId);
@@ -637,7 +644,7 @@ const SupabaseAdapter = (() => {
     date: r.created_at, updatedAt: r.updated_at || null, body: r.body || '', comments: []
   });
   const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
-  const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
+  const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, authorId: r.author_id || null, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
   const mapItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, unit: r.unit || '', price: r.price, note: r.note || '상온', soldOut: !!r.sold_out });
   const mapManual = (r) => (r.kind === 'recipe'
     ? { id: r.id, title: r.title, desc: r.body || '' }
@@ -929,8 +936,15 @@ const SupabaseAdapter = (() => {
         body: String(post.body || '').trim()
       };
       if (!payload.title) throw new Error('제목을 입력해 주세요.');
+      /* author_id 는 DB 기본값(auth.uid())으로 채워집니다. */
       const data = await one(client.from('board_posts').insert(payload).select().single());
       return mapPost(data, []);
+    },
+    /* 본사(hq) 전용 — 건의 글 삭제. board_comments 는 ON DELETE CASCADE 로 함께 정리됩니다. */
+    async deleteBoardPost(id) {
+      const data = await rows(client.from('board_posts').delete().eq('id', id).select());
+      if (!data.length) throw new Error('글을 삭제하지 못했습니다. 본사 관리자 계정으로 다시 시도해 주세요.');
+      return true;
     },
     async addComment(postId, comment) {
       const payload = {
