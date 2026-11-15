@@ -607,6 +607,9 @@ const LocalAdapter = (() => {
         });
       });
 
+      /* manual 그룹이 없는 예전 백업을 적용해도 매뉴얼 글은 보존합니다. */
+      if (!Array.isArray(data.manuals.manual)) manuals.manual = readManuals().manual;
+
       write('categories', categories);
       write('items', items);
       write('manuals', manuals);
@@ -1332,7 +1335,14 @@ const SupabaseAdapter = (() => {
         const { error } = await client.from('manual_items').upsert(manualRows, { onConflict: 'id' });
         if (error) fail(error);
       }
-      await removeMissing('manual_items', manualRows.map((m) => m.id));
+      /* 예전 백업 파일(manual 그룹이 없는 v1 JSON)을 그대로 적용해도
+         매뉴얼 글이 지워지지 않도록, manual 그룹이 없으면 기존 매뉴얼 글은 보존합니다. */
+      const keepIds = manualRows.map((m) => m.id);
+      if (!Array.isArray(data.manuals.manual)) {
+        const current = await this.getManuals();
+        current.manual.forEach((m) => keepIds.push(m.id));
+      }
+      await removeMissing('manual_items', keepIds);
 
       return {
         categories: categories.length,
