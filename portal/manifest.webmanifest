@@ -1,0 +1,20 @@
+{
+  "name": "CRB점주용",
+  "short_name": "CRB점주용",
+  "description": "크런치버거 가맹점주 포털 — 식자재 발주, 본사 공지, 매뉴얼·레시피, 건의 게시판",
+  "lang": "ko",
+  "dir": "ltr",
+  "id": "/portal/",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0B0F0D",
+  "theme_color": "#0B0F0D",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

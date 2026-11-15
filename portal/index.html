@@ -3,13 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CRUNCH'S 점주 포털 | 발주·공지·매뉴얼</title>
+<title>CRB점주용 | CRUNCH'S 점주 포털</title>
 <meta name="description" content="크런치버거 가맹점주 포털 — 식자재 발주, 본사 공지, 조리 매뉴얼, 건의 게시판을 한 곳에서.">
 <meta name="theme-color" content="#0B0F0D">
-<link rel="icon" type="image/png" href="assets/favicon.png">
-<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="CRB점주용">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261115m">
+<link rel="stylesheet" href="styles.css?v=20261115n">
 </head>
 <body>
 
@@ -61,7 +67,7 @@
 
         <p class="auth-switch" id="signupSwitch">
           초대 코드를 받으셨나요?
-          <button type="button" class="link-btn" id="toSignup">점주 회원가입 (초대 코드)</button>
+          <button type="button" class="link-btn" id="toSignup">회원가입 (초대 코드)</button>
         </p>
 
         <p class="auth-note" id="hqNotice" hidden>
@@ -74,23 +80,25 @@
         </p>
       </form>
 
-      <!-- 점주 회원가입 (초대 코드) -->
+      <!-- 회원가입 (초대 코드 · 점주 / 본사 관리자) -->
       <form id="signupForm" hidden novalidate>
         <label class="field-label" for="signupCode">초대 코드</label>
         <input class="text-input" id="signupCode" type="text" autocomplete="off" spellcheck="false"
                placeholder="예) CRUNCHS-7K2M" required>
         <p class="field-hint" id="signupCodeHint"></p>
 
-        <label class="field-label" for="signupStore">지점 선택</label>
-        <div class="select-wrap">
-          <select id="signupStore">
-            <option value="">지점을 선택하세요</option>
-            <option value="yangsan">양산점</option>
-            <option value="gimhae_bnb">김해진영비앤비점</option>
-            <option value="busan_gwangan">부산광안점</option>
-            <option value="pohang_idong">포항이동점</option>
-          </select>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        <div id="signupStoreField">
+          <label class="field-label" for="signupStore">지점 선택</label>
+          <div class="select-wrap">
+            <select id="signupStore">
+              <option value="">지점을 선택하세요</option>
+              <option value="yangsan">양산점</option>
+              <option value="gimhae_bnb">김해진영비앤비점</option>
+              <option value="busan_gwangan">부산광안점</option>
+              <option value="pohang_idong">포항이동점</option>
+            </select>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
         </div>
 
         <label class="field-label" for="signupName">이름</label>
@@ -109,13 +117,13 @@
         <p class="form-error" id="signupError" role="alert"></p>
 
         <button type="submit" class="btn btn-primary btn-block" id="signupSubmit">
-          가입하고 시작하기
+          <span id="signupSubmitLabel">가입하고 시작하기</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 11.8 6.7 16.1 11H4v2h12.1l-4.3 4.3 1.4 1.4L20 12z"/></svg>
         </button>
 
         <p class="auth-switch">
           이미 계정이 있으신가요?
-          <button type="button" class="link-btn" id="toLogin">점주 로그인</button>
+          <button type="button" class="link-btn" id="toLogin">로그인</button>
         </p>
       </form>
     </div>
@@ -185,7 +193,7 @@
           <a href="https://biz.baemin.com/" target="_blank" rel="noopener noreferrer">배민 사장님광장 <span aria-hidden="true">↗</span></a>
           <a href="https://ceo.yogiyo.co.kr/" target="_blank" rel="noopener noreferrer">요기요 사장님 사이트 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRUNCH'S Portal · v1.3</p>
+        <p class="side-version">CRB점주용 · v1.4</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -486,6 +494,7 @@
           <article class="admin-kpi"><span>발주 품목</span><strong id="adminItemCount">0</strong></article>
           <article class="admin-kpi"><span>매뉴얼 글</span><strong id="adminManualCount">0</strong></article>
           <article class="admin-kpi"><span>레시피</span><strong id="adminRecipeCount">0</strong></article>
+          <article class="admin-kpi"><span>가입 회원</span><strong id="adminMemberCount">0</strong></article>
         </div>
 
         <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="관리자 설정 구분">
@@ -494,6 +503,7 @@
           <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 관리</button>
           <button class="admin-tab" data-admin-tab="recipes" role="tab" aria-selected="false">레시피 관리</button>
           <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가맹 상담 접수</button>
+          <button class="admin-tab" data-admin-tab="members" role="tab" aria-selected="false">회원 관리</button>
           <button class="admin-tab" data-admin-tab="invites" role="tab" aria-selected="false">초대 코드 관리</button>
           <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업</button>
         </div>
@@ -552,10 +562,41 @@
           <div class="admin-list" id="adminAppList"></div>
         </section>
 
+        <!-- 회원 관리 -->
+        <section class="admin-panel" data-admin-panel="members" hidden>
+          <div class="admin-toolbar">
+            <div class="admin-filters">
+              <div class="chip-row" id="memberChips" role="tablist" aria-label="역할 필터">
+                <button type="button" class="chip is-active" data-member-role="all" role="tab" aria-selected="true">전체</button>
+                <button type="button" class="chip" data-member-role="hq" role="tab" aria-selected="false">본사 관리자</button>
+                <button type="button" class="chip" data-member-role="owner" role="tab" aria-selected="false">점주</button>
+              </div>
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+                <input type="search" id="memberSearch" placeholder="이름·지점·아이디 검색" aria-label="회원 검색">
+              </div>
+            </div>
+            <p class="admin-hint">
+              가입한 회원 전체를 역할·지점과 함께 보여 줍니다. <span id="memberCountLine" class="admin-count">0명</span><br>
+              새 본사 관리자는 <b>초대 코드 관리</b>에서 「본사 관리자」 코드를 발급해 가입받습니다.
+            </p>
+          </div>
+          <div class="member-summary">
+            <span class="member-stat">전체 <b id="memberTotal">0</b>명</span>
+            <span class="member-stat is-hq">본사 관리자 <b id="memberHq">0</b>명</span>
+            <span class="member-stat is-owner">점주 <b id="memberOwner">0</b>명</span>
+          </div>
+          <div class="admin-list" id="memberList"></div>
+        </section>
+
         <!-- 초대 코드 관리 -->
         <section class="admin-panel" data-admin-panel="invites" hidden>
           <div class="admin-toolbar">
             <div class="admin-inline-form invite-form">
+              <select id="inviteRole" aria-label="초대할 역할">
+                <option value="owner">점주</option>
+                <option value="hq">본사 관리자</option>
+              </select>
               <select id="inviteStore" aria-label="초대할 지점">
                 <option value="">가입 시 지점 선택 허용</option>
                 <option value="yangsan">양산점</option>
@@ -563,13 +604,14 @@
                 <option value="busan_gwangan">부산광안점</option>
                 <option value="pohang_idong">포항이동점</option>
               </select>
+              <input class="text-input" id="inviteMemo" maxlength="40" placeholder="메모 (예: 김기태 본사관리자)">
               <input class="text-input" id="inviteCodeInput" maxlength="24" placeholder="코드 (비우면 자동 생성)">
               <input class="text-input invite-days" id="inviteDays" type="number" min="1" max="365" value="14" aria-label="유효 기간(일)">
               <button class="btn btn-primary btn-sm" id="inviteCreate" type="button">코드 발급</button>
             </div>
             <p class="admin-hint">
-              점주는 <b>점주 로그인 → 점주 회원가입</b>에서 이 코드를 입력해 가입합니다. 코드는 1회만 사용할 수 있습니다.
-              지점을 지정하지 않고 발급하면 점주가 가입할 때 지점을 고릅니다.
+              점주·본사 관리자 모두 <b>로그인 → 회원가입 (초대 코드)</b>에서 이 코드를 입력해 가입합니다. 코드는 1회만 사용할 수 있습니다.
+              역할이 <b>본사 관리자</b>면 지점 없이 본사 계정으로 가입되고, 점주는 지점을 지정하거나 가입할 때 직접 고르게 할 수 있습니다.
             </p>
           </div>
           <div class="admin-list" id="inviteList"></div>
@@ -636,7 +678,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261115m"></script>
-<script src="app.js?v=20261115m"></script>
+<script src="data.js?v=20261115n"></script>
+<script src="app.js?v=20261115n"></script>
 </body>
 </html>

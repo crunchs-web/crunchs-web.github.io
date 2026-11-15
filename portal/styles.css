@@ -223,6 +223,23 @@ textarea { resize: vertical; }
 .invite-badge.is-live { background: var(--green-50); color: var(--green-700); }
 .invite-badge.is-used { background: var(--blue-bg); color: var(--blue); }
 .invite-badge.is-dead { background: #F3F4F3; color: var(--faint); }
+.invite-badge.is-hq { background: var(--ink); color: #fff; }
+.invite-badge.is-owner { background: #F1F3F1; color: var(--mute); }
+
+/* ---------- 관리자 설정 · 회원 관리 ---------- */
+.member-summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.member-stat {
+  font-size: 12px; font-weight: 600; color: var(--mute);
+  background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+}
+.member-stat b { color: var(--ink); font-weight: 900; margin: 0 1px 0 3px; }
+.member-stat.is-hq b { color: var(--green-700); }
+.member-avatar {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #EEF1EE; color: var(--text); font-size: 14px; font-weight: 900;
+}
+.member-avatar.is-hq { background: var(--green-50); color: var(--green-800); }
 .app-memo { color: var(--mute) !important; }
 .admin-row .app-memo { margin-top: 2px; }
 .bell-btn { position: relative; }

@@ -221,6 +221,10 @@ const LocalAdapter = (() => {
     name: 'local',
     async init() { ensureSeed(); },
 
+    /* 초대 코드·회원 목록은 Supabase 전용입니다. localStorage 모드에서는 비어 있습니다. */
+    async listInviteCodes() { return []; },
+    async listMembers() { return []; },
+
     /* --- 발주 --- */
     async listOrders(storeId) {
       const all = read('orders', []);
@@ -832,9 +836,12 @@ const SupabaseAdapter = (() => {
         if (!email) throw new Error('아이디를 입력해 주세요.');
         const check = await this.verifyInvite(code);
         if (!check.valid) throw new Error('유효하지 않거나 이미 사용된 초대 코드입니다.');
-        if (check.allow_store_choice && !storeId) throw new Error('지점을 선택해 주세요.');
-        if (!check.allow_store_choice && storeId && storeId !== check.store_id) {
-          throw new Error('이 초대 코드는 「' + check.store_name + '」 전용입니다. 지점을 다시 확인해 주세요.');
+        const hqCode = check.role === 'hq';
+        if (!hqCode) {
+          if (check.allow_store_choice && !storeId) throw new Error('지점을 선택해 주세요.');
+          if (!check.allow_store_choice && storeId && storeId !== check.store_id) {
+            throw new Error('이 초대 코드는 「' + check.store_name + '」 전용입니다. 지점을 다시 확인해 주세요.');
+          }
         }
 
         const { data, error } = await client.auth.signUp({
@@ -843,7 +850,7 @@ const SupabaseAdapter = (() => {
           options: {
             data: {
               invite_code: code,
-              store_id: storeId || (check.store_id || null),
+              store_id: hqCode ? null : (storeId || (check.store_id || null)),
               owner_name: ownerName
             }
           }
@@ -860,7 +867,7 @@ const SupabaseAdapter = (() => {
         }
 
         const profile = await this.currentProfile();
-        if (!profile || !profile.storeId) {
+        if (!profile || (profile.role !== 'hq' && !profile.storeId)) {
           await client.auth.signOut();
           throw new Error('초대 코드 적용에 실패했습니다. 코드를 확인하거나 본사에 문의해 주세요.');
         }
@@ -1012,24 +1019,32 @@ const SupabaseAdapter = (() => {
     async listInviteCodes() {
       const data = await rows(client.from('invite_codes').select('*').order('created_at', { ascending: false }).limit(200));
       return data.map((r) => ({
-        code: r.code, storeId: r.store_id, storeName: r.store_name,
+        code: r.code, role: r.role || 'owner', memo: r.memo || '',
+        storeId: r.store_id, storeName: r.store_name,
         usedBy: r.used_by, usedAt: r.used_at, expiresAt: r.expires_at, createdAt: r.created_at
       }));
     },
     async createInviteCode(input) {
       const payload = input || {};
-      const allowChoice = !!payload.allowChoice;
+      const role = payload.role === 'hq' ? 'hq' : 'owner';
+      const memo = String(payload.memo == null ? '' : payload.memo).trim().slice(0, 60);
+      const allowChoice = role === 'hq' ? false : !!payload.allowChoice;
       const storeId = String(payload.storeId == null ? '' : payload.storeId).trim();
       let storeName = String(payload.storeName == null ? '' : payload.storeName).trim();
 
-      const stores = await rows(client.from('stores').select('id,name'));
-      if (!allowChoice) {
-        if (!storeId) throw new Error('초대할 지점을 선택해 주세요.');
-        const target = stores.filter((s) => s.id === storeId)[0];
-        if (!target) throw new Error('지점을 찾을 수 없습니다.');
-        storeName = target.name;
-      } else {
+      if (role === 'hq') {
+        /* 본사 관리자 코드는 지점을 쓰지 않습니다 */
         storeName = '';
+      } else {
+        const stores = await rows(client.from('stores').select('id,name'));
+        if (!allowChoice) {
+          if (!storeId) throw new Error('초대할 지점을 선택해 주세요.');
+          const target = stores.filter((s) => s.id === storeId)[0];
+          if (!target) throw new Error('지점을 찾을 수 없습니다.');
+          storeName = target.name;
+        } else {
+          storeName = '';
+        }
       }
 
       let code = String(payload.code == null ? '' : payload.code).trim().toUpperCase();
@@ -1039,9 +1054,10 @@ const SupabaseAdapter = (() => {
       const days = Math.max(1, Math.min(365, Number(payload.days) || 14));
 
       if (!code) {
+        const prefix = role === 'hq' ? 'HQ-' : 'CRUNCHS-';
         let tries = 0;
         do {
-          code = 'CRUNCHS-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+          code = prefix + Math.random().toString(36).slice(2, 6).toUpperCase();
           tries += 1;
         } while (tries < 6 && (await this.listInviteCodes()).some((c) => c.code === code));
       }
@@ -1049,8 +1065,10 @@ const SupabaseAdapter = (() => {
       const session = await this.auth.session();
       const { error } = await client.from('invite_codes').insert({
         code,
-        store_id: allowChoice ? null : storeId,
-        store_name: allowChoice ? null : storeName,
+        role,
+        memo: memo || null,
+        store_id: role === 'hq' || allowChoice ? null : storeId,
+        store_name: role === 'hq' || allowChoice ? null : storeName,
         expires_at: new Date(Date.now() + days * 86400000).toISOString(),
         created_by: session ? session.user.id : null
       });
@@ -1064,6 +1082,27 @@ const SupabaseAdapter = (() => {
       const { error } = await client.from('invite_codes').delete().eq('code', code);
       if (error) fail(error);
       return this.listInviteCodes();
+    },
+
+    /* ======================================================================
+       회원 목록 (본사 전용 · 관리자 설정 → 회원 관리)
+       ----------------------------------------------------------------------
+       profiles + auth.users 를 서버 함수(list_members)가 합쳐 돌려줍니다.
+       RLS 대신 함수가 is_hq() 를 확인하므로 점주 세션에서는 호출이 거부됩니다.
+       ====================================================================== */
+    async listMembers() {
+      const { data, error } = await client.rpc('list_members');
+      if (error) fail(error);
+      return (data || []).map((r) => ({
+        id: r.id,
+        role: r.role,
+        storeId: r.store_id,
+        storeName: r.store_name,
+        ownerName: r.owner_name,
+        loginId: r.login_id,
+        email: r.email,
+        joinedAt: r.joined_at
+      }));
     },
 
     /* ======================================================================

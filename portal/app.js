@@ -26,6 +26,9 @@
     posts: [],
     applications: [],
     invites: [],
+    members: [],
+    memberRole: 'all',
+    memberSearch: '',
     checklist: {},
     /* 관리자 편집 데이터 */
     categories: [],
@@ -189,7 +192,7 @@
     if ($('#loginForm')) $('#loginForm').dataset.mode = authMode;
     if ($('#loginForm')) $('#loginForm').hidden = false;
     if ($('#signupForm')) $('#signupForm').hidden = true;
-    if ($('#signupSwitch')) $('#signupSwitch').hidden = authMode === 'hq';
+    if ($('#signupSwitch')) $('#signupSwitch').hidden = false;
     if ($('#hqNotice')) $('#hqNotice').hidden = authMode !== 'hq';
     if ($('#ownerNotice')) $('#ownerNotice').hidden = authMode !== 'owner';
     if ($('#authTitle')) $('#authTitle').textContent = AUTH_META[authMode].title;
@@ -204,13 +207,14 @@
     const signingUp = authView === 'signup';
     if ($('#loginForm')) $('#loginForm').hidden = signingUp;
     if ($('#signupForm')) $('#signupForm').hidden = !signingUp;
-    if ($('#authTitle')) $('#authTitle').textContent = signingUp ? '점주 회원가입' : AUTH_META[authMode].title;
+    if ($('#authTitle')) $('#authTitle').textContent = signingUp ? '회원가입 (초대 코드)' : AUTH_META[authMode].title;
     if ($('#authSub')) $('#authSub').textContent = signingUp
-      ? '본사에서 받은 초대 코드로 계정을 만듭니다.'
+      ? '본사에서 받은 초대 코드로 계정을 만듭니다. 점주·본사 관리자 모두 같은 화면에서 가입합니다.'
       : AUTH_META[authMode].sub;
     clearAuthErrors();
     if (signingUp) {
       fillStoreOptions();
+      applySignupRole(null);
       const code = $('#signupCode'); if (code) code.focus();
     } else {
       const id = $('#loginId'); if (id) id.focus();
@@ -244,16 +248,23 @@
 
   async function checkInviteCode() {
     const raw = ($('#signupCode').value || '').trim();
-    if (!raw) { setSignupHint('', null); return null; }
+    if (!raw) { setSignupHint('', null); applySignupRole(null); return null; }
     try {
       const check = await DB.auth.verifyInvite(raw);
       if (!check.valid) {
-        setSignupHint(check.reason === 'used' ? '유효하지 않거나 이미 사용된 초대 코드입니다.' : '유효하지 않거나 이미 사용된 초대 코드입니다.', 'bad');
+        applySignupRole(null);
+        setSignupHint('유효하지 않거나 이미 사용된 초대 코드입니다.', 'bad');
         return null;
       }
-      if (check.allow_store_choice) {
+      if (check.role === 'hq') {
+        /* 본사 관리자 코드 — 지점 선택 없이 가입 */
+        applySignupRole('hq');
+        setSignupHint('「본사 관리자」 전용 코드입니다. 지점 선택 없이 본사 관리자 계정으로 가입됩니다.', 'ok');
+      } else if (check.allow_store_choice) {
+        applySignupRole('owner');
         setSignupHint('지점 선택이 가능한 코드입니다. 가입할 지점을 직접 선택하세요.', 'ok');
       } else {
+        applySignupRole('owner');
         setSignupHint('「' + (check.store_name || '지정 지점') + '」 전용 코드입니다. 지점이 자동으로 선택되었습니다.', 'ok');
         const sel = $('#signupStore');
         if (sel && check.store_id) sel.value = check.store_id;
@@ -263,6 +274,13 @@
       setSignupHint('초대 코드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', 'bad');
       return null;
     }
+  }
+
+  /* 초대 코드 역할에 맞춰 지점 선택 영역·버튼 문구를 바꿉니다. (hq 코드면 지점 숨김) */
+  function applySignupRole(role) {
+    const isHqCode = role === 'hq';
+    if ($('#signupStoreField')) $('#signupStoreField').hidden = isHqCode;
+    if ($('#signupSubmitLabel')) $('#signupSubmitLabel').textContent = isHqCode ? '본사 관리자로 가입하기' : '가입하고 시작하기';
   }
 
   /* ==========================================================================
@@ -284,6 +302,10 @@
     state.posts = isHQ() ? await DB.listAllPosts() : await DB.listPosts(state.storeId);
     state.applications = isHQ() ? await DB.listApplications() : [];
     state.invites = isHQ() ? await DB.listInviteCodes() : [];
+    state.members = [];
+    if (isHQ()) {
+      try { state.members = await DB.listMembers(); } catch (err) { state.members = []; }
+    }
     state.checklist = await DB.getChecklist(isHQ() ? 'hq' : state.storeId);
 
     pruneCart();
@@ -882,6 +904,7 @@
     if ($('#adminBackupManual')) $('#adminBackupManual').textContent = manualCount;
     if ($('#adminBackupRecipe')) $('#adminBackupRecipe').textContent = recipeCount;
     if ($('#adminBackupCheck')) $('#adminBackupCheck').textContent = checkCount;
+    if ($('#adminMemberCount')) $('#adminMemberCount').textContent = (state.members || []).length;
 
     $$('#adminTabs [data-admin-tab]').forEach((b) => {
       const on = b.dataset.adminTab === state.adminTab;
@@ -894,8 +917,55 @@
     renderAdminItems();
     renderAdminManuals();
     renderAdminApplications();
+    renderAdminMembers();
     renderAdminInvites();
     renderAdminBackup();
+  }
+
+  /* ---------- 관리자 설정 → 회원 관리 ---------- */
+  function renderAdminMembers() {
+    const host = $('#memberList');
+    if (!host) return;
+    const all = state.members || [];
+    const hqCount = all.filter((m) => m.role === 'hq').length;
+    const ownerCount = all.length - hqCount;
+    if ($('#memberTotal')) $('#memberTotal').textContent = all.length;
+    if ($('#memberHq')) $('#memberHq').textContent = hqCount;
+    if ($('#memberOwner')) $('#memberOwner').textContent = ownerCount;
+    if ($('#memberCountLine')) $('#memberCountLine').textContent = all.length + '명';
+
+    $$('#memberChips [data-member-role]').forEach((b) => {
+      const on = b.dataset.memberRole === state.memberRole;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+
+    const q = (state.memberSearch || '').trim().toLowerCase();
+    const list = all.filter((m) => {
+      if (state.memberRole !== 'all' && m.role !== state.memberRole) return false;
+      if (!q) return true;
+      return [m.ownerName, m.storeName, m.loginId, m.role === 'hq' ? '본사 관리자' : '점주']
+        .join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+
+    if (!list.length) {
+      host.innerHTML = '<p class="empty-line">' + (all.length ? '조건에 맞는 회원이 없습니다.' : '아직 가입한 회원이 없습니다.') + '</p>';
+      return;
+    }
+
+    host.innerHTML = list.map((m) => {
+      const hq = m.role === 'hq';
+      const name = m.ownerName || (hq ? '본사 관리자' : '이름 미등록');
+      const roleLabel = hq ? '본사 관리자' : '점주';
+      const store = hq ? '본사' : (m.storeName || '지점 미지정');
+      const meta = [store, '아이디 ' + (m.loginId || '-'), '가입 ' + fmtDate(m.joinedAt)].join(' · ');
+      return '<div class="admin-row" data-member-id="' + esc(m.id) + '">' +
+        '<span class="member-avatar' + (hq ? ' is-hq' : '') + '">' + esc(name.slice(0, 1)) + '</span>' +
+        '<span class="admin-row-main"><strong>' + esc(name) +
+          '<span class="invite-badge ' + (hq ? 'is-hq' : 'is-owner') + '">' + roleLabel + '</span></strong>' +
+          '<small>' + esc(meta) + '</small></span>' +
+      '</div>';
+    }).join('');
   }
 
   function renderAdminInvites() {
@@ -908,32 +978,47 @@
       const expired = c.expiresAt && new Date(c.expiresAt).getTime() < now;
       const badge = used ? 'is-used' : expired ? 'is-dead' : 'is-live';
       const label = used ? '사용됨' : expired ? '만료됨' : '사용 가능';
-      const store = c.storeName ? esc(c.storeName) : '가입 시 지점 선택';
+      const hqCode = c.role === 'hq';
+      const roleTag = '<span class="invite-badge ' + (hqCode ? 'is-hq' : 'is-owner') + '">' + (hqCode ? '본사 관리자' : '점주') + '</span>';
+      const store = hqCode ? '본사 (관리자)' : (c.storeName ? esc(c.storeName) : '가입 시 지점 선택');
       const meta = ['발급 ' + fmtDate(c.createdAt)].concat(
         c.expiresAt ? ['만료 ' + fmtDate(c.expiresAt)] : [],
         used && c.usedAt ? ['사용 ' + fmtDateTime(c.usedAt)] : []
       ).join(' · ');
       return '<div class="admin-row" data-invite-code="' + esc(c.code) + '">' +
-        '<span class="admin-row-main"><strong>코드 ' + esc(c.code) +
+        '<span class="admin-row-main"><strong>코드 ' + esc(c.code) + roleTag +
           '<span class="invite-badge ' + badge + '">' + label + '</span></strong>' +
-          '<small>' + store + ' · ' + meta + '</small></span>' +
+          '<small>' + store + ' · ' + meta + (c.memo ? ' · ' + esc(c.memo) : '') + '</small></span>' +
         '<div class="admin-row-actions">' +
           '<button type="button" class="btn btn-ghost btn-sm is-danger" data-invite-del="' + esc(c.code) + '">폐기</button>' +
         '</div>' +
       '</div>';
-    }).join('') : '<p class="empty-line">발급된 초대 코드가 없습니다. 위에서 지점을 고르고 코드를 발급해 주세요.</p>';
+    }).join('') : '<p class="empty-line">발급된 초대 코드가 없습니다. 위에서 역할·지점을 고르고 코드를 발급해 주세요.</p>';
   }
 
   async function addInviteFromForm() {
-    const storeId = $('#inviteStore') ? $('#inviteStore').value : '';
+    const role = $('#inviteRole') ? $('#inviteRole').value : 'owner';
+    const storeId = role === 'hq' ? '' : ($('#inviteStore') ? $('#inviteStore').value : '');
+    const memo = $('#inviteMemo') ? $('#inviteMemo').value.trim() : '';
     const code = $('#inviteCodeInput') ? $('#inviteCodeInput').value.trim() : '';
     const days = $('#inviteDays') ? $('#inviteDays').value : 14;
     try {
-      state.invites = await DB.createInviteCode({ storeId, code, days, allowChoice: !storeId });
+      state.invites = await DB.createInviteCode({ role, storeId, memo, code, days, allowChoice: !storeId });
       if ($('#inviteCodeInput')) $('#inviteCodeInput').value = '';
+      if ($('#inviteMemo')) $('#inviteMemo').value = '';
       renderAdminInvites();
-      toast('초대 코드를 발급했습니다.');
+      toast(role === 'hq' ? '본사 관리자 초대 코드를 발급했습니다.' : '초대 코드를 발급했습니다.');
     } catch (err) { toast(err.message); }
+  }
+
+  function syncInviteRoleFields() {
+    const hq = $('#inviteRole') && $('#inviteRole').value === 'hq';
+    const store = $('#inviteStore');
+    if (store) {
+      store.disabled = !!hq;
+      if (hq) store.value = '';
+    }
+    if ($('#inviteMemo')) $('#inviteMemo').placeholder = hq ? '메모 (예: 김기태 본사관리자)' : '메모 (선택)';
   }
 
   function renderAdminApplications() {
@@ -1396,22 +1481,24 @@
       if (!ownerName) { errorBox.textContent = '이름을 입력해 주세요.'; $('#signupName').focus(); return; }
       if (pw.length < 8) { errorBox.textContent = '비밀번호는 8자 이상으로 입력해 주세요.'; $('#signupPassword').focus(); return; }
       if (pw !== pw2) { errorBox.textContent = '비밀번호가 서로 다릅니다. 다시 확인해 주세요.'; $('#signupPassword2').focus(); return; }
-      if (!storeId) { errorBox.textContent = '지점을 선택해 주세요.'; $('#signupStore').focus(); return; }
 
       submitBtn.disabled = true;
       submitBtn.classList.add('is-loading');
       try {
         const check = await DB.auth.verifyInvite(code);
         if (!check.valid) throw new Error('유효하지 않거나 이미 사용된 초대 코드입니다.');
-        if (!check.allow_store_choice && check.store_id && storeId !== check.store_id) {
-          throw new Error('이 초대 코드는 「' + (check.store_name || '지정 지점') + '」 전용입니다. 지점을 다시 확인해 주세요.');
+        if (check.role !== 'hq') {
+          if (!storeId) { errorBox.textContent = '지점을 선택해 주세요.'; $('#signupStore').focus(); return; }
+          if (!check.allow_store_choice && check.store_id && storeId !== check.store_id) {
+            throw new Error('이 초대 코드는 「' + (check.store_name || '지정 지점') + '」 전용입니다. 지점을 다시 확인해 주세요.');
+          }
         }
 
         const profile = await DB.auth.signUpWithInvite({ code, storeId, ownerName, id, password: pw });
         applySession(profile);
         await reloadAll();
         navigate('dashboard');
-        toast((profile.storeName || storeName(profile.storeId)) + ' 점주로 가입되었습니다. 환영합니다!');
+        toast(profile.role === 'hq' ? '본사 관리자로 가입되었습니다. 환영합니다!' : (profile.storeName || storeName(profile.storeId)) + ' 점주로 가입되었습니다. 환영합니다!');
       } catch (err) {
         errorBox.textContent = err.message || '가입에 실패했습니다.';
       } finally {
@@ -1650,6 +1737,12 @@
     /* ---------- 관리자 설정 (본사 전용) ---------- */
     $('#adminCatAdd').addEventListener('click', addCategoryFromForm);
     if ($('#inviteCreate')) $('#inviteCreate').addEventListener('click', addInviteFromForm);
+    if ($('#inviteRole')) $('#inviteRole').addEventListener('change', syncInviteRoleFields);
+    syncInviteRoleFields();
+    if ($('#memberSearch')) $('#memberSearch').addEventListener('input', (e) => {
+      state.memberSearch = e.target.value || '';
+      renderAdminMembers();
+    });
     if ($('#inviteCodeInput')) $('#inviteCodeInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); addInviteFromForm(); }
     });
@@ -1718,6 +1811,20 @@
             renderAdminInvites();
           } catch (err) { toast(err.message); }
         }
+        if (state.adminTab === 'members' && isHQ()) {
+          try {
+            state.members = await DB.listMembers();
+            renderAdminMembers();
+            if ($('#adminMemberCount')) $('#adminMemberCount').textContent = state.members.length;
+          } catch (err) { toast(err.message); }
+        }
+        return;
+      }
+
+      const memberChip = e.target.closest('[data-member-role]');
+      if (memberChip) {
+        state.memberRole = memberChip.dataset.memberRole;
+        renderAdminMembers();
         return;
       }
 
@@ -1803,8 +1910,23 @@
   /* ==========================================================================
      시작
      ========================================================================== */
+  /* ==========================================================================
+     PWA — 홈 화면에 추가(앱 설치)
+     --------------------------------------------------------------------------
+     manifest 는 index.html 에서 불러오고, 여기서는 서비스 워커만 등록합니다.
+     서비스 워커가 실패해도 포털 자체는 그대로 동작합니다(설치형 실행만 못 함).
+     ========================================================================== */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+    });
+  }
+
   async function init() {
     bindEvents();
+    registerServiceWorker();
     renderChecklist();
 
     let profile = null;
