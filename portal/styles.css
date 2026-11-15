@@ -659,7 +659,7 @@ textarea { resize: vertical; }
 /* ==========================================================================
    관리자 설정 (본사 전용)
    ========================================================================== */
-.admin-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.admin-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .admin-kpi {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 13px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0;
