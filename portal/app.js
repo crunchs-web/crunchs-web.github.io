@@ -726,7 +726,8 @@
     }
     const q = state.manualSearch.trim().toLowerCase();
     const items = (state.manuals.manual || []).filter((m) => {
-      if (state.manualCat !== '전체' && (m.category || '기타') !== state.manualCat) return false;
+      /* 검색어가 있으면 카테고리 구분 없이 전체에서 찾습니다. */
+      if (!q && state.manualCat !== '전체' && (m.category || '기타') !== state.manualCat) return false;
       if (!q) return true;
       return ((m.title || '') + ' ' + (m.summary || '') + ' ' + (m.body || '') + ' ' + (m.category || '')).toLowerCase().indexOf(q) >= 0;
     });
