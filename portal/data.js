@@ -46,15 +46,12 @@ const DEFAULT_CATALOG = [
 
 const DEFAULT_CATEGORIES = ['패티', '번', '소스', '치킨', '포장재'];
 
-/* ---------- 매뉴얼 · 체크리스트 기본값 ---------- */
+/* ---------- 매뉴얼 · 레시피 · 체크리스트 기본값 ----------
+   실서비스(Supabase)의 매뉴얼 본문은 DB(manual_items, kind='manual')에 있습니다.
+   아래는 localStorage 어댑터(개발용) 시드이며 레시피는 비워 둡니다(본사에서 등록). */
 const DEFAULT_MANUALS = {
-  recipe: [
-    { id: 'r-1', title: '번 데우기', desc: '번 커터로 자른 뒤 180℃ 그릴에서 단면 20초.' },
-    { id: 'r-2', title: '소스 도포', desc: '상단 번에 시그니처 소스 15g, 하단 번에 10g.' },
-    { id: 'r-3', title: '패티 튀김', desc: '치킨 패티 175℃에서 1차 2분 30초 → 2차 1분 30초.' },
-    { id: 'r-4', title: '조립 순서', desc: '하단 번 → 소스 → 패티 → 치즈 → 양상추 → 상단 번.' },
-    { id: 'r-5', title: '포장 · 대기', desc: '조립 후 3분 이내 제공. 대기 시 60℃ 보온 램프 사용.' }
-  ],
+  manual: [],
+  recipe: [],
   open: [
     { id: 'o-1', label: '냉장·냉동고 온도 확인 (냉장 0~4℃ / 냉동 -18℃ 이하)' },
     { id: 'o-2', label: '튀김유 산가 측정 및 여과' },
@@ -212,7 +209,12 @@ const LocalAdapter = (() => {
   const readItems = () => read('items', clone(DEFAULT_CATALOG)).map((it) => ({ soldOut: false, ...it }));
   const readManuals = () => {
     const raw = read('manuals', clone(DEFAULT_MANUALS)) || {};
-    return { recipe: raw.recipe || [], open: raw.open || [], close: raw.close || [] };
+    return {
+      manual: raw.manual || [],
+      recipe: raw.recipe || [],
+      open: raw.open || [],
+      close: raw.close || []
+    };
   };
 
   return {
@@ -451,10 +453,18 @@ const LocalAdapter = (() => {
       if (!manuals[group]) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
       const payload = data || {};
       let record;
-      if (group === 'recipe') {
+      if (group === 'manual' || group === 'recipe') {
         const title = String(payload.title == null ? '' : payload.title).trim();
-        if (!title) throw new Error('단계 제목을 입력해 주세요.');
-        record = { id: uid('r'), title, desc: String(payload.desc == null ? '' : payload.desc).trim() };
+        if (!title) throw new Error('제목을 입력해 주세요.');
+        record = {
+          id: uid(group === 'manual' ? 'm' : 'r'),
+          title,
+          summary: String(payload.summary == null ? '' : payload.summary).trim(),
+          body: String(payload.body == null ? '' : (payload.body || payload.desc || '')).trim()
+        };
+        if (group === 'manual') {
+          record.category = String(payload.category == null ? '' : payload.category).trim() || '기본 수칙';
+        }
       } else {
         const label = String(payload.label == null ? '' : payload.label).trim();
         if (!label) throw new Error('체크 항목을 입력해 주세요.');
@@ -471,10 +481,12 @@ const LocalAdapter = (() => {
       const index = list.findIndex((m) => m.id === id);
       if (index < 0) throw new Error('항목을 찾을 수 없습니다.');
       const next = { ...list[index], ...(patch || {}) };
-      if (group === 'recipe') {
+      if (group === 'manual' || group === 'recipe') {
         next.title = String(next.title || '').trim();
-        next.desc = String(next.desc || '').trim();
-        if (!next.title) throw new Error('단계 제목을 입력해 주세요.');
+        next.summary = String(next.summary || '').trim();
+        next.body = String(next.body == null ? (next.desc || '') : next.body).trim();
+        if (!next.title) throw new Error('제목을 입력해 주세요.');
+        if (group === 'manual') next.category = String(next.category || '').trim() || '기본 수칙';
       } else {
         next.label = String(next.label || '').trim();
         if (!next.label) throw new Error('체크 항목을 입력해 주세요.');
@@ -570,18 +582,24 @@ const LocalAdapter = (() => {
       });
 
       const seenManualIds = [];
-      const manuals = {};
-      ['recipe', 'open', 'close'].forEach((group) => {
+      const manuals = { manual: [], recipe: [], open: [], close: [] };
+      ['manual', 'recipe', 'open', 'close'].forEach((group) => {
         const list = Array.isArray(data.manuals[group]) ? data.manuals[group] : [];
         manuals[group] = list.map((raw, i) => {
           const m = raw || {};
           let id = String(m.id == null ? '' : m.id).trim() || (group + '-' + i + '-' + Date.now().toString(36));
           if (seenManualIds.includes(id)) id = id + '-' + i;
           seenManualIds.push(id);
-          if (group === 'recipe') {
+          if (group === 'manual' || group === 'recipe') {
             const title = String(m.title == null ? '' : m.title).trim();
-            if (!title) throw new Error('manuals.recipe[' + i + ']에 제목(title)이 없습니다.');
-            return { id, title, desc: String(m.desc == null ? '' : m.desc).trim() };
+            if (!title) throw new Error('manuals.' + group + '[' + i + ']에 제목(title)이 없습니다.');
+            const row = {
+              id, title,
+              summary: String(m.summary == null ? '' : m.summary).trim(),
+              body: String(m.body == null ? (m.desc == null ? '' : m.desc) : m.body).trim()
+            };
+            if (group === 'manual') row.category = String(m.category == null ? '' : m.category).trim() || '기본 수칙';
+            return row;
           }
           const label = String(m.label == null ? '' : m.label).trim();
           if (!label) throw new Error('manuals.' + group + '[' + i + ']에 항목(label)이 없습니다.');
@@ -592,7 +610,11 @@ const LocalAdapter = (() => {
       write('categories', categories);
       write('items', items);
       write('manuals', manuals);
-      return { categories: categories.length, items: items.length, manuals: manuals.recipe.length + manuals.open.length + manuals.close.length };
+      return {
+        categories: categories.length,
+        items: items.length,
+        manuals: manuals.manual.length + manuals.recipe.length + manuals.open.length + manuals.close.length
+      };
     },
     async resetConfig() {
       write('categories', clone(DEFAULT_CATEGORIES));
@@ -646,9 +668,18 @@ const SupabaseAdapter = (() => {
   const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
   const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, authorId: r.author_id || null, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
   const mapItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, unit: r.unit || '', price: r.price, note: r.note || '상온', soldOut: !!r.sold_out });
-  const mapManual = (r) => (r.kind === 'recipe'
-    ? { id: r.id, title: r.title, desc: r.body || '' }
-    : { id: r.id, label: r.title });
+  const mapManual = (r) => {
+    if (r.kind === 'manual') {
+      return {
+        id: r.id, category: r.category || '기타', title: r.title || '',
+        summary: r.summary || '', body: r.body || ''
+      };
+    }
+    if (r.kind === 'recipe') {
+      return { id: r.id, title: r.title || '', summary: r.summary || '', body: r.body || '' };
+    }
+    return { id: r.id, label: r.title || '' };
+  };
 
   /* 아이디 → Supabase Auth 이메일 매핑 (가상 도메인 @crunchs.kr)
      · 'yangsan01' → 'yangsan01@crunchs.kr'
@@ -1141,43 +1172,54 @@ const SupabaseAdapter = (() => {
     },
 
     /* ======================================================================
-       매뉴얼 · 체크리스트
+       매뉴얼 · 레시피 · 체크리스트
+       kind: manual(매뉴얼 글) / recipe(레시피) / open·close(체크리스트)
        ====================================================================== */
     async getManuals() {
       const data = await rows(client.from('manual_items').select('*').order('sort'));
-      const out = { recipe: [], open: [], close: [] };
+      const out = { manual: [], recipe: [], open: [], close: [] };
       data.forEach((r) => { if (out[r.kind]) out[r.kind].push(mapManual(r)); });
       return out;
     },
     async createManualItem(group, data) {
-      if (['recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
+      if (['manual', 'recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
       const payload = data || {};
-      const isRecipe = group === 'recipe';
-      const raw = isRecipe ? payload.title : payload.label;
+      const isDoc = group === 'manual' || group === 'recipe';
+      const raw = isDoc ? payload.title : payload.label;
       const title = String(raw == null ? '' : raw).trim();
-      if (!title) throw new Error(isRecipe ? '단계 제목을 입력해 주세요.' : '체크 항목을 입력해 주세요.');
+      if (!title) throw new Error(isDoc ? '제목을 입력해 주세요.' : '체크 항목을 입력해 주세요.');
       const sort = await nextSort('manual_items', (q) => q.eq('kind', group));
       const record = {
-        id: uid(isRecipe ? 'r' : (group === 'open' ? 'o' : 'c')),
-        kind: group, title,
-        body: isRecipe ? String(payload.desc == null ? '' : payload.desc).trim() : null,
+        id: uid(group === 'manual' ? 'm' : group === 'recipe' ? 'r' : group === 'open' ? 'o' : 'c'),
+        kind: group,
+        title,
+        summary: isDoc ? String(payload.summary == null ? '' : payload.summary).trim() : null,
+        body: isDoc ? String(payload.body == null ? (payload.desc == null ? '' : payload.desc) : payload.body).trim() : null,
+        category: group === 'manual' ? (String(payload.category == null ? '' : payload.category).trim() || '기본 수칙') : null,
         sort
       };
       const row = await one(client.from('manual_items').insert(record).select().single());
       return mapManual(row);
     },
     async updateManualItem(group, id, patch) {
-      if (['recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
+      if (['manual', 'recipe', 'open', 'close'].indexOf(group) < 0) throw new Error('매뉴얼 구분이 올바르지 않습니다.');
       const p = patch || {};
-      const isRecipe = group === 'recipe';
+      const isDoc = group === 'manual' || group === 'recipe';
       const body = {};
-      if (isRecipe) {
+      if (isDoc) {
         if (p.title !== undefined) {
           const t = String(p.title || '').trim();
-          if (!t) throw new Error('단계 제목을 입력해 주세요.');
+          if (!t) throw new Error('제목을 입력해 주세요.');
           body.title = t;
         }
-        if (p.desc !== undefined) body.body = String(p.desc == null ? '' : p.desc).trim();
+        if (p.summary !== undefined) body.summary = String(p.summary == null ? '' : p.summary).trim();
+        if (p.body !== undefined || p.desc !== undefined) {
+          const src = p.body !== undefined ? p.body : p.desc;
+          body.body = String(src == null ? '' : src).trim();
+        }
+        if (group === 'manual' && p.category !== undefined) {
+          body.category = String(p.category == null ? '' : p.category).trim() || '기본 수칙';
+        }
       } else if (p.label !== undefined) {
         const l = String(p.label || '').trim();
         if (!l) throw new Error('체크 항목을 입력해 주세요.');
@@ -1250,15 +1292,23 @@ const SupabaseAdapter = (() => {
         };
       });
 
-      const manuals = { recipe: [], open: [], close: [] };
-      ['recipe', 'open', 'close'].forEach((group) => {
+      const manuals = { manual: [], recipe: [], open: [], close: [] };
+      ['manual', 'recipe', 'open', 'close'].forEach((group) => {
         const list = Array.isArray(data.manuals[group]) ? data.manuals[group] : [];
         manuals[group] = list.map((raw, i) => {
           const m = raw || {};
-          if (group === 'recipe') {
+          if (group === 'manual' || group === 'recipe') {
             const title = String(m.title == null ? '' : m.title).trim();
-            if (!title) throw new Error('manuals.recipe[' + i + ']에 제목(title)이 없습니다.');
-            return { id: String(m.id || ('r-import-' + i)), kind: 'recipe', title, body: String(m.desc == null ? '' : m.desc).trim(), sort: i + 1 };
+            if (!title) throw new Error('manuals.' + group + '[' + i + ']에 제목(title)이 없습니다.');
+            return {
+              id: String(m.id || ((group === 'manual' ? 'm' : 'r') + '-import-' + i)),
+              kind: group,
+              title,
+              summary: String(m.summary == null ? '' : m.summary).trim(),
+              body: String(m.body == null ? (m.desc == null ? '' : m.desc) : m.body).trim(),
+              category: group === 'manual' ? (String(m.category == null ? '' : m.category).trim() || '기본 수칙') : null,
+              sort: i + 1
+            };
           }
           const label = String(m.label == null ? '' : m.label).trim();
           if (!label) throw new Error('manuals.' + group + '[' + i + ']에 항목(label)이 없습니다.');
@@ -1277,7 +1327,7 @@ const SupabaseAdapter = (() => {
       }
       await removeMissing('catalog_items', items.map((it) => it.id));
       await removeMissing('categories', categories);
-      const manualRows = [].concat(manuals.recipe, manuals.open, manuals.close);
+      const manualRows = [].concat(manuals.manual, manuals.recipe, manuals.open, manuals.close);
       if (manualRows.length) {
         const { error } = await client.from('manual_items').upsert(manualRows, { onConflict: 'id' });
         if (error) fail(error);
@@ -1287,7 +1337,7 @@ const SupabaseAdapter = (() => {
       return {
         categories: categories.length,
         items: items.length,
-        manuals: manuals.recipe.length + manuals.open.length + manuals.close.length
+        manuals: manuals.manual.length + manuals.recipe.length + manuals.open.length + manuals.close.length
       };
     },
     async resetConfig() {
@@ -1295,6 +1345,7 @@ const SupabaseAdapter = (() => {
         categories: DEFAULT_CATEGORIES.slice(),
         items: DEFAULT_CATALOG.map((it) => ({ ...it })),
         manuals: {
+          manual: DEFAULT_MANUALS.manual.map((m) => ({ ...m })),
           recipe: DEFAULT_MANUALS.recipe.map((m) => ({ ...m })),
           open: DEFAULT_MANUALS.open.map((m) => ({ ...m })),
           close: DEFAULT_MANUALS.close.map((m) => ({ ...m }))

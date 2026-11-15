@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261115f">
+<link rel="stylesheet" href="styles.css?v=20261115g">
 </head>
 <body>
 
@@ -171,7 +171,8 @@
         <button class="side-link" data-nav="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>발주 내역</span><em class="side-badge" id="badgeOrders" hidden></em></button>
         <p class="side-label">본사 소통</p>
         <button class="side-link" data-nav="notices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 3z"/><path d="M8 9h8M8 12.5h5"/></svg><span>공지사항</span><em class="side-badge" id="badgeNotices" hidden></em></button>
-        <button class="side-link" data-nav="manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M17 7h2v16"/></svg><span>매뉴얼 · 레시피</span></button>
+        <button class="side-link" data-nav="manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M17 7h2v16"/></svg><span>매뉴얼</span></button>
+        <button class="side-link" data-nav="recipe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M6 8h9l-1.5 3L15 14H6z"/></svg><span>레시피</span></button>
         <button class="side-link" data-nav="board"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><circle cx="9" cy="10.5" r=".9"/><circle cx="12.5" cy="10.5" r=".9"/><circle cx="16" cy="10.5" r=".9"/></svg><span>건의 게시판</span><em class="side-badge" id="badgeBoard" hidden></em></button>
         <p class="side-label" id="adminLabel" hidden>관리자</p>
         <button class="side-link" data-nav="admin" id="navAdmin" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="17" r="2"/></svg><span>관리자 설정</span></button>
@@ -266,8 +267,13 @@
             </a>
             <button class="quick-card" data-nav="manual">
               <span class="quick-emoji" aria-hidden="true">📖</span>
-              <strong>조리 매뉴얼</strong>
-              <small>튀김 온도 · 조리 공정</small>
+              <strong>매뉴얼</strong>
+              <small>위생 · 온도 · 청소 기준</small>
+            </button>
+            <button class="quick-card" data-nav="recipe">
+              <span class="quick-emoji" aria-hidden="true">🍔</span>
+              <strong>레시피</strong>
+              <small>버거 · 사이드 조리</small>
             </button>
             <button class="quick-card" data-nav="notices">
               <span class="quick-emoji" aria-hidden="true">📌</span>
@@ -382,51 +388,30 @@
       <section class="view" data-view="manual">
         <div class="view-head">
           <div>
-            <p class="crumb">매뉴얼</p>
-            <h1>매뉴얼 · 레시피</h1>
-            <p class="view-sub">버거 조리 공정과 튀김 가이드, 오픈·마감 체크리스트입니다.</p>
+            <p class="crumb">본사 소통 · 매뉴얼</p>
+            <h1>매장 운영 매뉴얼</h1>
+            <p class="view-sub">위생 · 온도 · 식자재 · 청소 · 손님 응대까지 크런치버거 표준입니다. 크루 교육 자료로도 사용하세요.</p>
           </div>
           <div class="progress-pill" id="checkProgress">오늘 체크 0/0</div>
         </div>
 
+        <div class="manual-tools">
+          <div class="chip-row" id="manualCatChips" role="tablist" aria-label="매뉴얼 카테고리"></div>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+            <input type="search" id="manualSearch" placeholder="매뉴얼 검색 (예: 손씻기, 173℃)" aria-label="매뉴얼 검색">
+          </div>
+        </div>
+
+        <div id="manualList" class="manual-sections"></div>
+
+        <div class="section-head">
+          <h2>오늘의 체크리스트</h2>
+          <small class="section-note">체크 상태는 매장별로 저장됩니다.</small>
+        </div>
+
         <div class="manual-grid">
           <details class="manual-card" open>
-            <summary>
-              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M6 8h9l-1.5 3L15 14H6z"/></svg></span>
-              <span class="manual-title">
-                <strong>버거 조리 공정</strong>
-                <small>시그니처 버거 기준 5단계</small>
-              </span>
-              <span class="manual-chev" aria-hidden="true">⌄</span>
-            </summary>
-            <ol class="recipe-steps" id="recipeSteps"></ol>
-          </details>
-
-          <details class="manual-card">
-            <summary>
-              <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c2 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1-3"/><path d="M12 21v-3"/></svg></span>
-              <span class="manual-title">
-                <strong>튀김 온도 · 시간 가이드</strong>
-                <small>품목별 기준표</small>
-              </span>
-              <span class="manual-chev" aria-hidden="true">⌄</span>
-            </summary>
-            <div class="table-scroll">
-              <table class="guide-table">
-                <thead><tr><th>품목</th><th>온도</th><th>1차</th><th>2차</th><th>비고</th></tr></thead>
-                <tbody>
-                  <tr><td>치킨 패티</td><td>175℃</td><td>2분 30초</td><td>1분 30초</td><td>2차 전 3분 휴지</td></tr>
-                  <tr><td>새우 패티</td><td>170℃</td><td>2분</td><td>1분</td><td>과튀김 주의</td></tr>
-                  <tr><td>치킨 윙</td><td>175℃</td><td>5분</td><td>3분</td><td>중심 74℃ 이상</td></tr>
-                  <tr><td>감자튀김</td><td>180℃</td><td>3분</td><td>—</td><td>소금 2g</td></tr>
-                  <tr><td>치즈볼</td><td>170℃</td><td>1분 40초</td><td>—</td><td>터짐 방지 저온</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="manual-tip">튀김유는 하루 1회 이상 여과하고, 산가 측정 2.0 초과 시 교체합니다.</p>
-          </details>
-
-          <details class="manual-card">
             <summary>
               <span class="manual-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg></span>
               <span class="manual-title">
@@ -452,6 +437,26 @@
         </div>
       </section>
 
+      <!-- ---------- 레시피 ---------- -->
+      <section class="view" data-view="recipe">
+        <div class="view-head">
+          <div>
+            <p class="crumb">본사 소통 · 레시피</p>
+            <h1>조리 레시피</h1>
+            <p class="view-sub">본사에서 등록한 버거 · 사이드 조리 레시피입니다. 현장에서 임의로 바꾸지 마세요.</p>
+          </div>
+          <button class="btn btn-primary" id="recipeAdminBtn" hidden>레시피 관리</button>
+        </div>
+
+        <div id="recipeList" class="manual-sections"></div>
+
+        <div class="empty-card" id="recipeEmpty" hidden>
+          <span class="empty-emoji" aria-hidden="true">📖</span>
+          <p class="empty-title">등록된 레시피가 아직 없습니다.</p>
+          <p class="empty-text">본사 관리자 설정에서 레시피를 추가할 수 있습니다.</p>
+        </div>
+      </section>
+
       <!-- ---------- 건의 게시판 ---------- -->
       <section class="view" data-view="board">
         <div class="view-head">
@@ -472,20 +477,22 @@
           <div>
             <p class="crumb">본사 관리자</p>
             <h1>관리자 설정</h1>
-            <p class="view-sub">발주 카테고리·품목과 매뉴얼·체크리스트를 코드 없이 직접 관리합니다. 저장한 내용은 점주 화면에 바로 반영됩니다.</p>
+            <p class="view-sub">발주 카테고리·품목과 매뉴얼·레시피를 코드 없이 직접 관리합니다. 저장한 내용은 점주 화면에 바로 반영됩니다.</p>
           </div>
         </div>
 
         <div class="admin-summary">
           <article class="admin-kpi"><span>발주 카테고리</span><strong id="adminCatCount">0</strong></article>
           <article class="admin-kpi"><span>발주 품목</span><strong id="adminItemCount">0</strong></article>
-          <article class="admin-kpi"><span>매뉴얼 · 체크 항목</span><strong id="adminManualCount">0</strong></article>
+          <article class="admin-kpi"><span>매뉴얼 글</span><strong id="adminManualCount">0</strong></article>
+          <article class="admin-kpi"><span>레시피</span><strong id="adminRecipeCount">0</strong></article>
         </div>
 
         <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="관리자 설정 구분">
           <button class="admin-tab is-active" data-admin-tab="categories" role="tab" aria-selected="true">카테고리 관리</button>
           <button class="admin-tab" data-admin-tab="items" role="tab" aria-selected="false">발주 품목 관리</button>
-          <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 · 체크리스트</button>
+          <button class="admin-tab" data-admin-tab="manuals" role="tab" aria-selected="false">매뉴얼 관리</button>
+          <button class="admin-tab" data-admin-tab="recipes" role="tab" aria-selected="false">레시피 관리</button>
           <button class="admin-tab" data-admin-tab="applications" role="tab" aria-selected="false">가맹 상담 접수</button>
           <button class="admin-tab" data-admin-tab="invites" role="tab" aria-selected="false">초대 코드 관리</button>
           <button class="admin-tab" data-admin-tab="backup" role="tab" aria-selected="false">백업</button>
@@ -521,9 +528,20 @@
           <div class="admin-list" id="adminItemList"></div>
         </section>
 
-        <!-- 매뉴얼 · 체크리스트 -->
+        <!-- 매뉴얼 관리 -->
         <section class="admin-panel" data-admin-panel="manuals" hidden>
+          <div class="admin-toolbar">
+            <p class="admin-hint">매뉴얼 글은 카테고리별로 묶여 점주 화면에 표시됩니다. 본문은 줄바꿈으로 구분하며 <b>#</b> 소제목 · <b>1.</b> 단계 · <b>-</b> 불릿 · <b>!</b> 주의 · <b>*</b> 팁 · <b>|</b> 표로 서식이 잡힙니다.</p>
+          </div>
           <div id="adminManualGroups"></div>
+        </section>
+
+        <!-- 레시피 관리 (매뉴얼과 분리) -->
+        <section class="admin-panel" data-admin-panel="recipes" hidden>
+          <div class="admin-toolbar">
+            <p class="admin-hint">조리 레시피는 점주 화면의 <b>레시피</b> 메뉴에만 표시됩니다. 매뉴얼과 섞이지 않습니다.</p>
+          </div>
+          <div id="adminRecipeGroups"></div>
         </section>
 
         <!-- 가맹 상담 접수 -->
@@ -583,7 +601,9 @@
                 <ul>
                   <li><span>발주 카테고리</span><b id="adminBackupCat">0</b></li>
                   <li><span>발주 품목</span><b id="adminBackupItem">0</b></li>
-                  <li><span>매뉴얼 · 체크 항목</span><b id="adminBackupManual">0</b></li>
+                  <li><span>매뉴얼 글</span><b id="adminBackupManual">0</b></li>
+                  <li><span>레시피</span><b id="adminBackupRecipe">0</b></li>
+                  <li><span>체크리스트 항목</span><b id="adminBackupCheck">0</b></li>
                 </ul>
                 <p class="admin-hint">내보낸 JSON은 다른 브라우저나 새 기기에서 그대로 가져와 쓸 수 있습니다.</p>
               </div>
@@ -616,7 +636,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261115f"></script>
-<script src="app.js?v=20261115f"></script>
+<script src="data.js?v=20261115g"></script>
+<script src="app.js?v=20261115g"></script>
 </body>
 </html>

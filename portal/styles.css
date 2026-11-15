@@ -359,7 +359,7 @@ textarea { resize: vertical; }
 .empty-line { padding: 22px 4px; font-size: 13px; color: var(--faint); text-align: center; }
 
 /* ---------- 바로가기 ---------- */
-.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-bottom: 6px; }
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 10px; padding-bottom: 6px; }
 .quick-card {
   display: flex; flex-direction: column; gap: 2px; text-align: left;
   border: 1px solid var(--line); border-radius: 13px; padding: 14px; background: #FCFDFB;
@@ -555,6 +555,43 @@ textarea { resize: vertical; }
 .guide-table th { font-size: 11.5px; color: var(--faint); font-weight: 700; background: #FAFCF9; }
 .guide-table td:first-child { font-weight: 700; }
 .manual-tip { font-size: 12px; color: var(--mute); margin-top: 10px; }
+
+/* ---------- 매뉴얼: 카테고리·본문 ---------- */
+.manual-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.manual-sections { display: grid; gap: 26px; }
+.manual-group { display: grid; gap: 10px; }
+.section-head { display: flex; align-items: center; gap: 10px; }
+.section-head h2 { font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
+.section-count { font-size: 11.5px; font-weight: 800; color: var(--green-800); background: var(--green-50); border: 1px solid var(--green-100); border-radius: 999px; padding: 3px 9px; }
+.section-note { font-size: 11.5px; color: var(--faint); margin-left: auto; }
+.manual-body { display: grid; gap: 8px; font-size: 13px; line-height: 1.72; color: var(--text); }
+.manual-body > *:first-child { margin-top: 4px; }
+.manual-h { font-size: 12.5px; font-weight: 800; color: var(--green-800); margin-top: 8px; letter-spacing: -.01em; }
+.manual-p { color: var(--mute); }
+.manual-list { display: grid; gap: 4px; padding-left: 2px; }
+.manual-list li { position: relative; padding-left: 13px; color: var(--text); }
+.manual-list li::before { content: ''; position: absolute; left: 2px; top: 9px; width: 4px; height: 4px; border-radius: 50%; background: var(--green-600); }
+.manual-steps { display: grid; gap: 5px; counter-reset: ms; list-style: none; }
+.manual-steps li { position: relative; padding-left: 24px; color: var(--text); counter-increment: ms; }
+.manual-steps li::before {
+  content: counter(ms); position: absolute; left: 0; top: 2px;
+  width: 17px; height: 17px; border-radius: 50%; background: var(--ink); color: #fff;
+  font-size: 10px; font-weight: 800; display: grid; place-items: center;
+}
+.manual-caution { background: #FDF0EE; border-left: 3px solid var(--red); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; color: #8A2B20; }
+.manual-note { background: var(--green-50); border-left: 3px solid var(--green-600); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; color: var(--green-800); }
+.manual-body .guide-table { margin: 2px 0 4px; }
+.manual-body-foot { display: flex; justify-content: flex-end; padding-top: 6px; border-top: 1px dashed var(--line); margin-top: 4px; }
+.manual-editor { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 12.5px; line-height: 1.66; }
+
+/* 빈 상태 */
+.empty-card {
+  background: var(--card); border: 1px dashed var(--line-strong); border-radius: var(--radius-lg);
+  padding: 40px 24px; text-align: center; display: grid; gap: 6px; place-items: center;
+}
+.empty-emoji { font-size: 30px; line-height: 1; }
+.empty-title { font-size: 14.5px; font-weight: 800; }
+.empty-text { font-size: 12.5px; color: var(--mute); }
 .check-items { display: grid; gap: 4px; }
 .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13px; cursor: pointer; }
 .check-item:hover { background: #F7FAF5; }
@@ -801,6 +838,9 @@ textarea { resize: vertical; }
   .item-grid { grid-template-columns: 1fr; }
   .modal-dialog { max-height: 90vh; }
   .progress-pill { font-size: 11.5px; padding: 6px 11px; }
+  .manual-tools { align-items: stretch; }
+  .manual-tools .search-box { width: 100%; }
+  .manual-sections { gap: 22px; }
 }
 
 /* ---------- 관리자 설정 반응형 ---------- */

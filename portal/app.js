@@ -30,7 +30,9 @@
     /* 관리자 편집 데이터 */
     categories: [],
     catalog: [],
-    manuals: { recipe: [], open: [], close: [] },
+    manuals: { manual: [], recipe: [], open: [], close: [] },
+    manualCat: '전체',
+    manualSearch: '',
     adminTab: 'categories',
     adminItemCat: 'all',
     adminSearch: ''
@@ -287,7 +289,8 @@
     pruneCart();
     renderBadges();
     renderDashboard();
-    renderRecipeSteps();
+    renderManualList();
+    renderRecipes();
     renderCatalog();
     renderCart();
     renderHistory();
@@ -629,14 +632,140 @@
       }, true);
   }
 
-  /* ---------- 매뉴얼 체크리스트 · 조리 단계 ---------- */
-  function renderRecipeSteps() {
-    const el = $('#recipeSteps');
-    if (!el) return;
-    const steps = state.manuals.recipe || [];
-    el.innerHTML = steps.length
-      ? steps.map((s) => '<li><b>' + esc(s.title) + '</b><span>' + esc(s.desc) + '</span></li>').join('')
-      : '<li class="manual-empty">등록된 조리 단계가 없습니다.</li>';
+  /* ---------- 매뉴얼 · 레시피 ---------- */
+  const MANUAL_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M17 7h2v16"/></svg>';
+  const RECIPE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M6 8h9l-1.5 3L15 14H6z"/></svg>';
+
+  /* 본문 표기 규칙 → HTML
+     # 소제목 / 1. 단계 / - 불릿 / ! 주의 / * 팁 / | 표 */
+  function manualTableHtml(rows) {
+    const clean = rows.filter((r) => !r.every((c) => /^:?-{2,}:?$/.test(c)));
+    if (!clean.length) return '';
+    const head = clean[0];
+    const rest = clean.slice(1);
+    return '<div class="table-scroll"><table class="guide-table"><thead><tr>' +
+      head.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' +
+      rest.map((r) => '<tr>' + r.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') +
+      '</tbody></table></div>';
+  }
+
+  function renderManualBody(body) {
+    const lines = String(body == null ? '' : body).split(/\r?\n/);
+    const out = [];
+    let list = null;
+    const flush = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) { flush(); continue; }
+      if (line.charAt(0) === '|') {
+        flush();
+        const rows = [];
+        while (i < lines.length && lines[i].trim().charAt(0) === '|') {
+          const cells = lines[i].trim().split('|');
+          rows.push(cells.slice(1, cells.length - 1).map((c) => c.trim()));
+          i += 1;
+        }
+        i -= 1;
+        out.push(manualTableHtml(rows));
+        continue;
+      }
+      if (line.slice(0, 2) === '# ') { flush(); out.push('<h4 class="manual-h">' + esc(line.slice(2)) + '</h4>'); continue; }
+      if (line.slice(0, 2) === '! ') { flush(); out.push('<p class="manual-caution">' + esc(line.slice(2)) + '</p>'); continue; }
+      if (line.slice(0, 2) === '* ') { flush(); out.push('<p class="manual-note">' + esc(line.slice(2)) + '</p>'); continue; }
+      if (line.slice(0, 2) === '- ') {
+        if (list !== 'ul') { flush(); list = 'ul'; out.push('<ul class="manual-list">'); }
+        out.push('<li>' + esc(line.slice(2)) + '</li>');
+        continue;
+      }
+      const step = line.match(/^(\d+)\.\s+(.*)$/);
+      if (step) {
+        if (list !== 'ol') { flush(); list = 'ol'; out.push('<ol class="manual-steps">'); }
+        out.push('<li>' + esc(step[2]) + '</li>');
+        continue;
+      }
+      flush();
+      out.push('<p class="manual-p">' + esc(line) + '</p>');
+    }
+    flush();
+    return out.join('');
+  }
+
+  function manualCategories() {
+    const seen = [];
+    (state.manuals.manual || []).forEach((m) => {
+      const c = m.category || '기타';
+      if (seen.indexOf(c) < 0) seen.push(c);
+    });
+    return seen;
+  }
+
+  function manualArticleCard(m, group, open) {
+    const isManual = group === 'manual';
+    return '<details class="manual-card manual-article"' + (open ? ' open' : '') + '>' +
+      '<summary>' +
+        '<span class="manual-icon">' + (isManual ? MANUAL_ICON : RECIPE_ICON) + '</span>' +
+        '<span class="manual-title"><strong>' + esc(m.title) + '</strong>' +
+          (m.summary ? '<small>' + esc(m.summary) + '</small>' : '') + '</span>' +
+        '<span class="manual-chev" aria-hidden="true">⌄</span>' +
+      '</summary>' +
+      '<div class="manual-body">' + renderManualBody(m.body) +
+        (isHQ() ? '<div class="manual-body-foot"><button type="button" class="btn btn-ghost btn-sm" data-manual-edit="' + esc(m.id) + '" data-manual-group="' + group + '">이 글 수정</button></div>' : '') +
+      '</div></details>';
+  }
+
+  function renderManualList() {
+    const host = $('#manualList');
+    if (!host) return;
+    const cats = ['전체'].concat(manualCategories());
+    if (cats.indexOf(state.manualCat) < 0) state.manualCat = '전체';
+    const chipHost = $('#manualCatChips');
+    if (chipHost) {
+      chipHost.innerHTML = cats.map((c) =>
+        '<button type="button" class="filter' + (c === state.manualCat ? ' is-active' : '') + '" data-manual-cat="' + esc(c) + '" role="tab" aria-selected="' + (c === state.manualCat) + '">' + esc(c) + '</button>'
+      ).join('');
+    }
+    const q = state.manualSearch.trim().toLowerCase();
+    const items = (state.manuals.manual || []).filter((m) => {
+      if (state.manualCat !== '전체' && (m.category || '기타') !== state.manualCat) return false;
+      if (!q) return true;
+      return ((m.title || '') + ' ' + (m.summary || '') + ' ' + (m.body || '') + ' ' + (m.category || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!items.length) {
+      host.innerHTML = '<div class="empty-card"><span class="empty-emoji" aria-hidden="true">🔍</span>' +
+        '<p class="empty-title">' + (q ? '검색 결과가 없습니다.' : '등록된 매뉴얼이 없습니다.') + '</p>' +
+        '<p class="empty-text">' + (q ? '다른 검색어로 찾아보세요. (예: 손씻기, 173℃, 소분)' : '본사 관리자 설정에서 매뉴얼을 추가할 수 있습니다.') + '</p></div>';
+      return;
+    }
+    const groups = [];
+    items.forEach((m) => {
+      const name = m.category || '기타';
+      let g = groups.filter((x) => x.name === name)[0];
+      if (!g) { g = { name: name, list: [] }; groups.push(g); }
+      g.list.push(m);
+    });
+    let opened = false;
+    host.innerHTML = groups.map((g) =>
+      '<section class="manual-group">' +
+        '<div class="section-head"><h2>' + esc(g.name) + '</h2><span class="section-count">' + g.list.length + '개</span></div>' +
+        '<div class="manual-grid">' + g.list.map((m) => {
+          const open = !opened && state.manualCat !== '전체' ? (opened = true) : false;
+          return manualArticleCard(m, 'manual', open);
+        }).join('') + '</div>' +
+      '</section>'
+    ).join('');
+  }
+
+  function renderRecipes() {
+    const host = $('#recipeList');
+    if (!host) return;
+    const list = state.manuals.recipe || [];
+    const empty = $('#recipeEmpty');
+    if (empty) empty.hidden = list.length > 0;
+    const btn = $('#recipeAdminBtn');
+    if (btn) btn.hidden = !isHQ();
+    host.innerHTML = list.length
+      ? '<div class="manual-grid">' + list.map((r, i) => manualArticleCard(r, 'recipe', i === 0)).join('') + '</div>'
+      : '';
   }
 
   function renderChecklist() {
@@ -729,22 +858,29 @@
   /* ==========================================================================
      관리자 설정 (본사 관리자 전용)
      ========================================================================== */
-  const MANUAL_GROUPS = ['recipe', 'open', 'close'];
+  const MANUAL_GROUPS = ['manual', 'recipe', 'open', 'close'];
   const MANUAL_GROUP_META = {
-    recipe: { title: '조리 매뉴얼 단계', hint: '버거 조리 공정 순서입니다. 제목과 설명을 함께 관리합니다.', addLabel: '단계 추가' },
+    manual: { title: '매뉴얼 글', hint: '위생·온도·청소·응대 기준을 카테고리별로 관리합니다. 본문 줄바꿈 규칙(# 소제목, 1. 단계, - 불릿, ! 주의, * 팁, | 표)대로 화면에 서식이 잡힙니다.', addLabel: '매뉴얼 글 추가' },
+    recipe: { title: '조리 레시피', hint: '레시피는 점주 화면의 레시피 메뉴에만 표시됩니다. 매뉴얼과 섞이지 않습니다.', addLabel: '레시피 추가' },
     open: { title: '오픈 체크리스트', hint: '영업 시작 전 확인 항목입니다.', addLabel: '항목 추가' },
     close: { title: '마감 체크리스트', hint: '영업 종료 후 확인 항목입니다.', addLabel: '항목 추가' }
   };
+  const MANUAL_GROUPS_BY_TAB = { manuals: ['manual', 'open', 'close'], recipes: ['recipe'] };
 
   function renderAdmin() {
     if (!isHQ() || !$('#adminCatList')) return;
-    const manualCount = state.manuals.recipe.length + state.manuals.open.length + state.manuals.close.length;
+    const manualCount = (state.manuals.manual || []).length;
+    const recipeCount = (state.manuals.recipe || []).length;
+    const checkCount = (state.manuals.open || []).length + (state.manuals.close || []).length;
     $('#adminCatCount').textContent = state.categories.length;
     $('#adminItemCount').textContent = state.catalog.length;
-    $('#adminManualCount').textContent = manualCount;
+    if ($('#adminManualCount')) $('#adminManualCount').textContent = manualCount;
+    if ($('#adminRecipeCount')) $('#adminRecipeCount').textContent = recipeCount;
     if ($('#adminBackupCat')) $('#adminBackupCat').textContent = state.categories.length;
     if ($('#adminBackupItem')) $('#adminBackupItem').textContent = state.catalog.length;
     if ($('#adminBackupManual')) $('#adminBackupManual').textContent = manualCount;
+    if ($('#adminBackupRecipe')) $('#adminBackupRecipe').textContent = recipeCount;
+    if ($('#adminBackupCheck')) $('#adminBackupCheck').textContent = checkCount;
 
     $$('#adminTabs [data-admin-tab]').forEach((b) => {
       const on = b.dataset.adminTab === state.adminTab;
@@ -855,33 +991,39 @@
   }
 
   function renderAdminManuals() {
-    const host = $('#adminManualGroups');
-    if (!host) return;
-    host.innerHTML = MANUAL_GROUPS.map((group) => {
-      const meta = MANUAL_GROUP_META[group];
-      const list = state.manuals[group] || [];
-      const isRecipe = group === 'recipe';
-      const rows = list.map((m, i) =>
-        '<div class="admin-row" data-manual-row="' + esc(m.id) + '">' +
-          '<span class="admin-index">' + (i + 1) + '</span>' +
-          '<span class="admin-row-main"><strong>' + esc(isRecipe ? m.title : m.label) + '</strong>' +
-            (isRecipe && m.desc ? '<small>' + esc(m.desc) + '</small>' : '') + '</span>' +
-          '<div class="admin-row-actions">' +
-            '<button type="button" class="btn btn-ghost btn-sm" data-manual-edit="' + esc(m.id) + '" data-manual-group="' + group + '">수정</button>' +
-            '<button type="button" class="btn btn-ghost btn-sm is-danger" data-manual-del="' + esc(m.id) + '" data-manual-group="' + group + '">삭제</button>' +
-          '</div>' +
-        '</div>'
-      ).join('');
-      return '<section class="admin-group">' +
-        '<div class="admin-group-head"><div><h3>' + meta.title + '</h3><p class="admin-hint">' + meta.hint + '</p></div>' +
-          '<span class="admin-count">' + list.length + '개</span></div>' +
-        '<div class="admin-inline-form">' +
-          '<input class="text-input" id="adminManualInput-' + group + '" maxlength="80" placeholder="' + (isRecipe ? '새 단계 제목 (예: 치즈 토핑)' : '새 체크 항목 입력') + '">' +
-          '<button type="button" class="btn btn-primary btn-sm" data-manual-add="' + group + '">' + meta.addLabel + '</button>' +
-        '</div>' +
-        '<div class="admin-list">' + (rows || '<p class="empty-line">등록된 항목이 없습니다.</p>') + '</div>' +
-      '</section>';
-    }).join('');
+    Object.keys(MANUAL_GROUPS_BY_TAB).forEach((tab) => {
+      const host = $(tab === 'manuals' ? '#adminManualGroups' : '#adminRecipeGroups');
+      if (!host) return;
+      host.innerHTML = MANUAL_GROUPS_BY_TAB[tab].map((group) => {
+        const meta = MANUAL_GROUP_META[group];
+        const list = state.manuals[group] || [];
+        const isDoc = group === 'manual' || group === 'recipe';
+        const rows = list.map((m, i) =>
+          '<div class="admin-row" data-manual-row="' + esc(m.id) + '">' +
+            '<span class="admin-index">' + (i + 1) + '</span>' +
+            (group === 'manual' ? '<span class="item-cat">' + esc(m.category || '기타') + '</span>' : '') +
+            '<span class="admin-row-main"><strong>' + esc(isDoc ? m.title : m.label) + '</strong>' +
+              (isDoc && m.summary ? '<small>' + esc(m.summary) + '</small>' : '') + '</span>' +
+            '<div class="admin-row-actions">' +
+              '<button type="button" class="btn btn-ghost btn-sm" data-manual-edit="' + esc(m.id) + '" data-manual-group="' + group + '">수정</button>' +
+              '<button type="button" class="btn btn-ghost btn-sm is-danger" data-manual-del="' + esc(m.id) + '" data-manual-group="' + group + '">삭제</button>' +
+            '</div>' +
+          '</div>'
+        ).join('');
+        const add = isDoc
+          ? '<div class="admin-inline-form"><button type="button" class="btn btn-primary btn-sm" data-manual-add="' + group + '">+ ' + meta.addLabel + '</button></div>'
+          : '<div class="admin-inline-form">' +
+              '<input class="text-input" id="adminManualInput-' + group + '" maxlength="80" placeholder="새 체크 항목 입력">' +
+              '<button type="button" class="btn btn-primary btn-sm" data-manual-add="' + group + '">' + meta.addLabel + '</button>' +
+            '</div>';
+        return '<section class="admin-group">' +
+          '<div class="admin-group-head"><div><h3>' + meta.title + '</h3><p class="admin-hint">' + meta.hint + '</p></div>' +
+            '<span class="admin-count">' + list.length + '개</span></div>' +
+          add +
+          '<div class="admin-list">' + (rows || '<p class="empty-line">등록된 항목이 없습니다.</p>') + '</div>' +
+        '</section>';
+      }).join('');
+    });
   }
 
   async function renderAdminBackup() {
@@ -898,7 +1040,8 @@
     if (state.catalogCat !== '전체' && !state.categories.includes(state.catalogCat)) state.catalogCat = '전체';
     if (state.adminItemCat !== 'all' && !state.categories.includes(state.adminItemCat)) state.adminItemCat = 'all';
     pruneCart();
-    renderRecipeSteps();
+    renderManualList();
+    renderRecipes();
     renderCatalog();
     renderCart();
     renderChecklist();
@@ -1047,18 +1190,27 @@
   }
 
   function openManualModal(group, item) {
-    const isRecipe = group === 'recipe';
+    const isDoc = group === 'manual' || group === 'recipe';
     const isNew = !item;
     const inline = $('#adminManualInput-' + group);
     const prefill = isNew && inline ? inline.value.trim() : '';
-    const title = isRecipe
-      ? (isNew ? '조리 매뉴얼 단계 추가' : '조리 매뉴얼 단계 수정')
-      : (isNew ? '체크 항목 추가' : '체크 항목 수정');
-    const fields = isRecipe
-      ? '<label class="field-label" for="manualTitle">단계 제목</label>' +
-        '<input class="text-input" id="manualTitle" maxlength="40" placeholder="예) 치즈 토핑" value="' + esc(item ? item.title : prefill) + '">' +
-        '<label class="field-label" for="manualDesc">설명</label>' +
-        '<textarea class="text-input" id="manualDesc" rows="3" placeholder="예) 패티 위에 체다 치즈 1장을 올리고 10초간 스팀.">' + esc(item ? item.desc : '') + '</textarea>'
+    const label = group === 'manual' ? '매뉴얼 글' : group === 'recipe' ? '레시피' : '체크 항목';
+    const title = (isNew ? label + ' 추가' : label + ' 수정');
+    const cats = manualCategories();
+    const catValue = item ? (item.category || '') : (state.manualCat !== '전체' ? state.manualCat : (cats[0] || '기본 수칙'));
+    const fields = isDoc
+      ? (group === 'manual'
+          ? '<label class="field-label" for="manualCategory">카테고리</label>' +
+            '<input class="text-input" id="manualCategory" list="manualCatOptions" maxlength="30" placeholder="예) 위생·교차오염" value="' + esc(catValue) + '">' +
+            '<datalist id="manualCatOptions">' + cats.map((c) => '<option value="' + esc(c) + '"></option>').join('') + '</datalist>'
+          : '') +
+        '<label class="field-label" for="manualTitle">제목</label>' +
+        '<input class="text-input" id="manualTitle" maxlength="60" placeholder="' + (group === 'manual' ? '예) 손 씻기 타이밍과 표준 수세법' : '예) 핫크런치 치킨버거 조립') + '" value="' + esc(item ? item.title : prefill) + '">' +
+        '<label class="field-label" for="manualSummary">한 줄 요약</label>' +
+        '<input class="text-input" id="manualSummary" maxlength="90" placeholder="목록에 함께 보여질 한 줄 설명" value="' + esc(item ? (item.summary || '') : '') + '">' +
+        '<label class="field-label" for="manualBody">본문</label>' +
+        '<textarea class="text-input manual-editor" id="manualBody" rows="12" spellcheck="false" placeholder="# 소제목 / 1. 단계 / - 불릿 / ! 주의 / * 팁 / | 표">' + esc(item ? (item.body || item.desc || '') : '') + '</textarea>' +
+        '<p class="admin-hint">줄바꿈 기준: <b>#</b> 소제목 · <b>1.</b> 단계 · <b>-</b> 불릿 · <b>!</b> 주의(빨강) · <b>*</b> 팁(초록) · <b>|</b> 표(첫 줄이 머리행)</p>'
       : '<label class="field-label" for="manualLabel">체크 항목</label>' +
         '<input class="text-input" id="manualLabel" maxlength="80" placeholder="예) 아이스크림 냉동고 온도 확인" value="' + esc(item ? item.label : prefill) + '">';
     openModal(title, '<div class="form-grid">' + fields + '<p class="form-error" id="manualError"></p></div>' +
@@ -1068,15 +1220,21 @@
     const save = async () => {
       const err = $('#manualError');
       let payload;
-      if (isRecipe) {
-        const stepTitle = $('#manualTitle').value.trim();
-        const desc = $('#manualDesc').value.trim();
-        if (!stepTitle) { err.textContent = '단계 제목을 입력해 주세요.'; return; }
-        payload = { title: stepTitle, desc };
+      if (isDoc) {
+        const docTitle = $('#manualTitle').value.trim();
+        const summary = $('#manualSummary').value.trim();
+        const bodyText = $('#manualBody').value.trim();
+        if (!docTitle) { err.textContent = '제목을 입력해 주세요.'; return; }
+        payload = { title: docTitle, summary: summary, body: bodyText };
+        if (group === 'manual') {
+          const category = $('#manualCategory').value.trim();
+          if (!category) { err.textContent = '카테고리를 입력해 주세요.'; return; }
+          payload.category = category;
+        }
       } else {
-        const label = $('#manualLabel').value.trim();
-        if (!label) { err.textContent = '체크 항목을 입력해 주세요.'; return; }
-        payload = { label };
+        const itemLabel = $('#manualLabel').value.trim();
+        if (!itemLabel) { err.textContent = '체크 항목을 입력해 주세요.'; return; }
+        payload = { label: itemLabel };
       }
       try {
         if (isNew) await DB.createManualItem(group, payload);
@@ -1092,7 +1250,7 @@
   }
 
   async function addManualFromInline(group) {
-    if (group === 'recipe') { openManualModal('recipe', null); return; }
+    if (group === 'manual' || group === 'recipe') { openManualModal(group, null); return; }
     const input = $('#adminManualInput-' + group);
     const label = input ? input.value.trim() : '';
     if (!label) { toast('추가할 체크 항목을 입력해 주세요.'); if (input) input.focus(); return; }
@@ -1151,7 +1309,8 @@
     $('#sidebar').classList.remove('is-open');
     $('#menuBtn').setAttribute('aria-expanded', 'false');
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
-    if (view === 'manual') { renderRecipeSteps(); renderChecklist(); }
+    if (view === 'manual') { renderManualList(); renderChecklist(); }
+    if (view === 'recipe') renderRecipes();
     if (view === 'admin') renderAdmin();
   }
 
@@ -1282,6 +1441,22 @@
     $('#menuBtn').addEventListener('click', () => {
       const open = $('#sidebar').classList.toggle('is-open');
       $('#menuBtn').setAttribute('aria-expanded', String(open));
+    });
+
+    /* 매뉴얼 카테고리·검색 */
+    if ($('#manualCatChips')) $('#manualCatChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-manual-cat]');
+      if (!chip) return;
+      state.manualCat = chip.dataset.manualCat;
+      renderManualList();
+    });
+    if ($('#manualSearch')) $('#manualSearch').addEventListener('input', (e) => {
+      state.manualSearch = e.target.value;
+      renderManualList();
+    });
+    if ($('#recipeAdminBtn')) $('#recipeAdminBtn').addEventListener('click', () => {
+      state.adminTab = 'recipes';
+      navigate('admin');
     });
 
     /* 카탈로그 */
@@ -1608,8 +1783,9 @@
         const group = manualDel.dataset.manualGroup;
         const item = (state.manuals[group] || []).find((m) => m.id === manualDel.dataset.manualDel);
         if (!item) return;
-        const label = group === 'recipe' ? item.title : item.label;
-        openConfirm('항목 삭제', '「' + esc(label) + '」 항목을 삭제합니다.', '삭제', async () => {
+        const itemName = (group === 'manual' || group === 'recipe') ? item.title : item.label;
+        openConfirm('항목 삭제', '「' + esc(itemName) + '」 항목을 삭제합니다.' +
+          (group === 'manual' ? '<br>점주 화면의 매뉴얼에서도 바로 사라집니다.' : ''), '삭제', async () => {
           await DB.deleteManualItem(group, item.id);
           closeModal();
           await refreshCatalogData();
