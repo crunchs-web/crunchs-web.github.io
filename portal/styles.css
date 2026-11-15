@@ -557,7 +557,9 @@ textarea { resize: vertical; }
 .manual-tip { font-size: 12px; color: var(--mute); margin-top: 10px; }
 
 /* ---------- 매뉴얼: 카테고리·본문 ---------- */
-.manual-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.manual-tools { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.manual-tools .chip-row { flex: 1 1 420px; min-width: 0; }
+.manual-tools .search-box { flex: 0 0 250px; max-width: 100%; }
 .manual-sections { display: grid; gap: 26px; }
 .manual-group { display: grid; gap: 10px; }
 .section-head { display: flex; align-items: center; gap: 10px; }
