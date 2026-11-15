@@ -80,6 +80,8 @@
       if (!item) return;
       item.classList.toggle('is-open', open);
       btn.setAttribute('aria-expanded', String(open));
+      var panel = item.querySelector('.faq-a');
+      if (panel) panel.setAttribute('aria-hidden', String(!open));
     }
 
     faqButtons.forEach(function (btn) {
