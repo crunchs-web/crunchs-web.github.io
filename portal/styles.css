@@ -393,6 +393,55 @@ textarea { resize: vertical; }
 .quick-card strong { font-size: 13.5px; font-weight: 800; }
 .quick-card small { font-size: 11.5px; color: var(--faint); }
 
+/* ---------- 고정 공지 · 가맹점주용 실무가이드 ---------- */
+.pin-banner {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap; overflow: hidden;
+  background: radial-gradient(125% 170% at 0% 0%, #17341F 0%, #0E1A13 46%, var(--ink) 100%);
+  border: 1px solid #21402B; border-radius: var(--radius-lg);
+  padding: 18px 20px; margin-bottom: 14px;
+  box-shadow: 0 20px 44px -34px rgba(6, 22, 13, .8);
+}
+.pin-banner::after {
+  content: ""; position: absolute; right: -70px; top: -120px; width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(22,163,74,.32), rgba(22,163,74,0) 68%);
+  pointer-events: none;
+}
+.pin-banner-body { position: relative; min-width: 0; flex: 1 1 320px; }
+.pin-banner-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+  color: #A7F0C2; background: rgba(22,163,74,.16);
+  border: 1px solid rgba(34,197,94,.34); border-radius: 999px; padding: 3px 9px;
+  margin-bottom: 9px;
+}
+.pin-banner h2 { font-size: 17.5px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.4; color: #fff; }
+.pin-banner p { font-size: 12.5px; line-height: 1.7; color: #A7B6AD; margin-top: 5px; max-width: 66ch; }
+.pin-banner p b { color: #DCF3E4; font-weight: 700; }
+.pin-banner-topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.pin-banner-topics span {
+  font-size: 10.5px; font-weight: 700; color: rgba(220,243,228,.72);
+  border: 1px solid rgba(232,239,233,.14); border-radius: 999px; padding: 3px 9px;
+}
+.pin-banner-actions { position: relative; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pin-banner-url { font-size: 11.5px; color: #7C8F83; letter-spacing: .01em; }
+.pin-banner-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--green-600); color: #fff; border-radius: 11px; padding: 11px 16px;
+  font-size: 13.5px; font-weight: 800; white-space: nowrap;
+  box-shadow: 0 14px 28px -18px rgba(34,197,94,.95);
+  transition: background .16s ease, transform .16s ease;
+}
+.pin-banner-btn:hover { background: var(--green-500); transform: translateY(-1px); }
+.pin-banner-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* 공지사항 페이지 — 조금 더 조용한 형태 */
+.pin-banner--compact { padding: 15px 18px; align-items: center; }
+.pin-banner--compact h2 { font-size: 16px; }
+.pin-banner--compact .pin-banner-tag { margin-bottom: 7px; }
+/* 사이드바 실무가이드 링크 */
+.side-card--guide { margin-top: 10px; border-color: rgba(34,197,94,.26); }
+.side-card--guide a { color: var(--green-500); font-weight: 700; }
+
 /* ==========================================================================
    발주
    ========================================================================== */
@@ -857,6 +906,12 @@ textarea { resize: vertical; }
   .order-head { padding: 12px; gap: 8px; }
   .order-amount { font-size: 13px; }
   .order-id { font-size: 11px; }
+  .pin-banner { padding: 15px 16px; gap: 12px; border-radius: 18px; }
+  .pin-banner h2 { font-size: 16px; }
+  .pin-banner p { font-size: 12px; }
+  .pin-banner-actions { width: 100%; gap: 8px; }
+  .pin-banner-btn { flex: 1 1 auto; justify-content: center; }
+  .pin-banner-url { display: none; }
   .notice-card { padding: 13px; gap: 10px; }
   .notice-date { display: none; }
   .view-head h1 { font-size: 20px; }

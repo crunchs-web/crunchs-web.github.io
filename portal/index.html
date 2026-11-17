@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261115r">
+<link rel="stylesheet" href="styles.css?v=20261117a">
 </head>
 <body>
 
@@ -193,7 +193,11 @@
           <a href="https://biz.baemin.com/" target="_blank" rel="noopener noreferrer">배민 사장님광장 <span aria-hidden="true">↗</span></a>
           <a href="https://ceo.yogiyo.co.kr/" target="_blank" rel="noopener noreferrer">요기요 사장님 사이트 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRB점주용 · v1.4</p>
+        <div class="side-card side-card--guide">
+          <p class="side-card-title">가맹점주용 실무가이드</p>
+          <a href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">세무 · 노무 · 임대차 실무 <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="side-version">CRB점주용 · v1.5</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -219,6 +223,25 @@
             </button>
           </div>
         </div>
+
+        <!-- 📌 고정 공지 · 가맹점주용 실무가이드 -->
+        <article class="pin-banner" aria-label="고정 공지 — 가맹점주용 실무가이드">
+          <div class="pin-banner-body">
+            <span class="pin-banner-tag"><span aria-hidden="true">📌</span> 고정 공지</span>
+            <h2>가맹점주용 실무가이드</h2>
+            <p>매장을 운영하며 바로 부딪히는 <b>세무·절세</b>, <b>노무·4대보험</b>, <b>정책자금</b>, <b>상가 임대차·가맹계약</b> 실무를 현행법 기준으로 정리해 둔 가이드 블로그입니다.</p>
+            <div class="pin-banner-topics" aria-hidden="true">
+              <span>세무·절세</span><span>노무·4대보험</span><span>정책자금</span><span>상가 임대차</span><span>가맹 계약</span>
+            </div>
+          </div>
+          <div class="pin-banner-actions">
+            <span class="pin-banner-url">saltcoke.tistory.com</span>
+            <a class="pin-banner-btn" href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">
+              가이드 보러가기
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+            </a>
+          </div>
+        </article>
 
         <div class="kpi-grid">
           <article class="kpi">
@@ -383,6 +406,22 @@
           </div>
           <button class="btn btn-primary" id="newNoticeBtn" hidden>새 공지 작성</button>
         </div>
+        <!-- 📌 고정 공지 · 가맹점주용 실무가이드 (공지 최상단 고정) -->
+        <article class="pin-banner pin-banner--compact" aria-label="고정 공지 — 가맹점주용 실무가이드">
+          <div class="pin-banner-body">
+            <span class="pin-banner-tag"><span aria-hidden="true">📌</span> 고정 공지</span>
+            <h2>가맹점주용 실무가이드</h2>
+            <p>세무·절세, 노무·4대보험, 정책자금, 상가 임대차·가맹계약까지 매장 운영에 필요한 실무 정보를 정리한 블로그입니다.</p>
+          </div>
+          <div class="pin-banner-actions">
+            <span class="pin-banner-url">saltcoke.tistory.com</span>
+            <a class="pin-banner-btn" href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">
+              가이드 보러가기
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+            </a>
+          </div>
+        </article>
+
         <div class="filter-row" id="noticeFilter">
           <button class="filter is-active" data-cat="all">전체</button>
           <button class="filter" data-cat="신메뉴">신메뉴</button>
@@ -679,7 +718,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261115r"></script>
-<script src="app.js?v=20261115r"></script>
+<script src="data.js?v=20261117a"></script>
+<script src="app.js?v=20261117a"></script>
 </body>
 </html>
