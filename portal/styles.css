@@ -673,7 +673,7 @@ textarea { resize: vertical; }
 .check-item:has(input:checked) span { color: var(--faint); text-decoration: line-through; }
 
 /* ---------- 서식 (인사·노무) ---------- */
-.doc-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; margin-bottom: 14px; }
+.doc-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; margin-bottom: 14px; }
 .doc-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg);
   padding: 18px; display: grid; gap: 10px; box-shadow: var(--shadow-sm);
