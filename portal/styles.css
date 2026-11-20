@@ -672,6 +672,27 @@ textarea { resize: vertical; }
 .check-item input { width: 17px; height: 17px; accent-color: var(--green-700); margin-top: 2px; flex: none; }
 .check-item:has(input:checked) span { color: var(--faint); text-decoration: line-through; }
 
+/* ---------- 서식 (인사·노무) ---------- */
+.doc-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; margin-bottom: 14px; }
+.doc-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: 18px; display: grid; gap: 10px; box-shadow: var(--shadow-sm);
+}
+.doc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.doc-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--green-50); color: var(--green-700); display: grid; place-items: center; flex: none; }
+.doc-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.doc-badge { font-size: 11px; font-weight: 800; letter-spacing: .02em; color: var(--green-800); background: var(--green-50); border: 1px solid var(--green-100); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.doc-title { font-size: 15.5px; font-weight: 800; letter-spacing: -.02em; line-height: 1.42; }
+.doc-desc { font-size: 12.5px; color: var(--mute); line-height: 1.72; }
+.doc-meta { display: grid; gap: 4px; font-size: 12px; }
+.doc-meta li { position: relative; padding-left: 13px; }
+.doc-meta li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 4px; height: 4px; border-radius: 50%; background: var(--green-600); }
+.doc-meta b { color: var(--green-800); }
+.doc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 4px; }
+.doc-actions .btn { width: 100%; white-space: normal; line-height: 1.35; text-align: center; }
+.doc-actions .btn-primary { grid-column: 1 / -1; }
+.doc-foot { font-size: 11px; color: var(--faint); border-top: 1px dashed var(--line); padding-top: 9px; }
+
 /* ---------- 게시판 ---------- */
 .post-list { display: grid; gap: 10px; }
 .post-card {

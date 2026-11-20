@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261117a">
+<link rel="stylesheet" href="styles.css?v=20261120a">
 </head>
 <body>
 
@@ -181,6 +181,7 @@
         <button class="side-link" data-nav="notices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 3z"/><path d="M8 9h8M8 12.5h5"/></svg><span>공지사항</span><em class="side-badge" id="badgeNotices" hidden></em></button>
         <button class="side-link" data-nav="manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M17 7h2v16"/></svg><span>매뉴얼</span></button>
         <button class="side-link" data-nav="recipe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M6 8h9l-1.5 3L15 14H6z"/></svg><span>레시피</span></button>
+        <button class="side-link" data-nav="forms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12.5h6M10 16h3.5"/></svg><span>서식</span></button>
         <button class="side-link" data-nav="board"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><circle cx="9" cy="10.5" r=".9"/><circle cx="12.5" cy="10.5" r=".9"/><circle cx="16" cy="10.5" r=".9"/></svg><span>건의 게시판</span><em class="side-badge" id="badgeBoard" hidden></em></button>
         <p class="side-label" id="adminLabel" hidden>관리자</p>
         <button class="side-link" data-nav="admin" id="navAdmin" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="17" r="2"/></svg><span>관리자 설정</span></button>
@@ -197,7 +198,7 @@
           <p class="side-card-title">가맹점주용 실무가이드</p>
           <a href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">세무 · 노무 · 임대차 실무 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRB점주용 · v1.5</p>
+        <p class="side-version">CRB점주용 · v1.6</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -504,6 +505,76 @@
         </div>
       </section>
 
+      <!-- ---------- 서식 ---------- -->
+      <section class="view" data-view="forms">
+        <div class="view-head">
+          <div>
+            <p class="crumb">본사 소통 · 서식</p>
+            <h1>인사 · 노무 서식</h1>
+            <p class="view-sub">본사가 배포하는 표준 서식입니다. <b>PDF</b>는 그대로 인쇄해 쓰고, <b>Word(.docx)</b>는 매장·근로자 정보를 채워 수정해 쓰세요.</p>
+          </div>
+          <span class="progress-pill" id="formsCount">서식 2종</span>
+        </div>
+
+        <div class="doc-grid">
+          <!-- 서식 1 -->
+          <article class="doc-card">
+            <div class="doc-card-head">
+              <span class="doc-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12.5h6M10 16h3.5"/></svg></span>
+              <span class="doc-badge">CRB-HR-01</span>
+            </div>
+            <h2 class="doc-title">파트타이머(단시간 근로자) 표준 근로계약서</h2>
+            <p class="doc-desc">크런치버거 가맹점(사업주)과 단시간 근로자가 체결하는 표준 근로계약서입니다. 근로기준법 제17조에 따라 근로조건을 서면으로 명시하고 근로자에게 교부합니다.</p>
+            <ul class="doc-meta">
+              <li>2026년 최저임금 <b>시급 10,320원</b> 반영</li>
+              <li>2부 작성 · 1부 근로자 교부</li>
+              <li>A4 2쪽 · 2026년판</li>
+            </ul>
+            <div class="doc-actions">
+              <a class="btn btn-primary btn-sm" href="assets/forms/crunchburger-parttime-contract.pdf" download="크런치버거_파트타이머_표준근로계약서.pdf">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 17 6.3 10.3l1.4-1.4L11 12.2zM4 19h16v2H4z"/></svg>
+                PDF 다운로드 (인쇄용)
+              </a>
+              <a class="btn btn-ghost btn-sm" href="assets/forms/crunchburger-parttime-contract.pdf" target="_blank" rel="noopener noreferrer">미리보기</a>
+              <a class="btn btn-ghost btn-sm" href="assets/forms/crunchburger-parttime-contract.docx" download="크런치버거_파트타이머_표준근로계약서.docx">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 17 6.3 10.3l1.4-1.4L11 12.2zM4 19h16v2H4z"/></svg>
+                Word(.docx) 다운로드 (수정용)
+              </a>
+            </div>
+            <p class="doc-foot">PDF 182KB · DOCX 106KB · 2026.11.20 배포</p>
+          </article>
+
+          <!-- 서식 2 -->
+          <article class="doc-card">
+            <div class="doc-card-head">
+              <span class="doc-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.6-8 9-4.8-1.4-8-4.5-8-9V6z"/><path d="m8.5 12 2.3 2.3L15.5 9.6"/></svg></span>
+              <span class="doc-badge">CRB-HR-02</span>
+            </div>
+            <h2 class="doc-title">레시피 및 영업비밀 유지서약서</h2>
+            <p class="doc-desc">파트타이머·직원이 입사 시 작성하는 서약서입니다. 조리 레시피·소스·조리 매뉴얼과 POS·포털·매출 자료의 외부 유출을 금지하고, 퇴직 후에도 효력이 유지됩니다.</p>
+            <ul class="doc-meta">
+              <li>조리 레시피 · 소스 · 포털 · SNS 유출 금지</li>
+              <li>근로자 1인당 1부 작성 · 매장 보관</li>
+              <li>A4 1쪽 · 2026년판</li>
+            </ul>
+            <div class="doc-actions">
+              <a class="btn btn-primary btn-sm" href="assets/forms/crunchburger-recipe-nda.pdf" download="크런치버거_레시피_비밀유지서약서.pdf">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 17 6.3 10.3l1.4-1.4L11 12.2zM4 19h16v2H4z"/></svg>
+                PDF 다운로드 (인쇄용)
+              </a>
+              <a class="btn btn-ghost btn-sm" href="assets/forms/crunchburger-recipe-nda.pdf" target="_blank" rel="noopener noreferrer">미리보기</a>
+              <a class="btn btn-ghost btn-sm" href="assets/forms/crunchburger-recipe-nda.docx" download="크런치버거_레시피_비밀유지서약서.docx">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 17 6.3 10.3l1.4-1.4L11 12.2zM4 19h16v2H4z"/></svg>
+                Word(.docx) 다운로드 (수정용)
+              </a>
+            </div>
+            <p class="doc-foot">PDF 167KB · DOCX 104KB · 2026.11.20 배포</p>
+          </article>
+        </div>
+
+        <p class="hint-box">인쇄할 때는 인쇄 창에서 <b>용지 A4 · 배율 100%(실제 크기)</b>로 맞춰 주세요. 계약서는 <b>2부 작성해 1부를 근로자에게 교부</b>하고, 서약서는 근로계약서와 함께 매장에 보관합니다. 서식이 개정되면 본사가 이 화면에서 새 버전으로 바꿔 올립니다.</p>
+      </section>
+
       <!-- ---------- 건의 게시판 ---------- -->
       <section class="view" data-view="board">
         <div class="view-head">
@@ -718,7 +789,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261117a"></script>
-<script src="app.js?v=20261117a"></script>
+<script src="data.js?v=20261120a"></script>
+<script src="app.js?v=20261120a"></script>
 </body>
 </html>
