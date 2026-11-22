@@ -1526,7 +1526,7 @@
       (showStore ? '<th scope="col">지점</th>' : '') +
       '<th scope="col" class="num">배민</th><th scope="col" class="num">쿠팡이츠</th>' +
       '<th scope="col" class="num">홀·포장</th><th scope="col" class="num">총매출</th>' +
-      '<th scope="col" class="sales-th-act"><span class="sr-only">수정</span></th></tr></thead>';
+      (hq ? '<th scope="col" class="sales-th-act"><span class="sr-only">수정</span></th>' : '') + '</tr></thead>';
 
     const body = rows.map((r) => {
       const isToday = r.date === todayISO();
@@ -1556,7 +1556,7 @@
           (r.coupangOrders ? '<small class="sales-sub">' + r.coupangOrders.toLocaleString('ko-KR') + '건</small>' : '') + '</td>' +
         '<td data-label="홀·포장" class="num">' + hallCell + '</td>' +
         '<td data-label="총매출" class="num"><strong class="sales-total" data-sale-total="' + esc(r.date) + '">' + (r.empty ? '—' : won(r.total)) + '</strong></td>' +
-        '<td class="sales-td-act">' + act + '</td>' +
+        (hq ? '<td class="sales-td-act">' + act + '</td>' : '') +
       '</tr>';
     }).join('');
 
@@ -1566,7 +1566,7 @@
       '<td class="num">' + won(st.coupang) + '</td>' +
       '<td class="num">' + won(st.hall) + '</td>' +
       '<td class="num"><strong>' + won(st.total) + '</strong></td>' +
-      '<td></td></tr></tfoot>';
+      (hq ? '<td></td>' : '') + '</tr></tfoot>';
 
     $('#salesTable').innerHTML = '<table class="sales-table">' + head + '<tbody>' + body + '</tbody>' + foot + '</table>';
   }
