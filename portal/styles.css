@@ -1031,7 +1031,7 @@ textarea { resize: vertical; }
   .sales-table td:first-child::before { display: none; }
   .sales-table .sales-sub { display: inline; margin-left: 4px; }
   .sales-table .sales-memo { display: block; margin-left: 0; }
-  .sales-table td.sales-td-act { justify-content: flex-end; padding-top: 8px; }
+  .sales-table td.sales-td-act { width: 100%; justify-content: flex-end; padding-top: 8px; }
   .sales-table td.sales-td-act::before { display: none; }
   .sales-table td.sales-td-act .btn { width: 100%; }
   .sales-hall-edit { flex: 1; justify-content: flex-end; }
