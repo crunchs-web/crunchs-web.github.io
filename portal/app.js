@@ -1547,7 +1547,8 @@
 
       return '<tr class="sales-tr' + (r.empty ? ' is-empty' : '') + (isToday ? ' is-today' : '') + '" data-sale-row="' + esc(r.date) + '">' +
         '<td data-label="날짜"><strong class="sales-date">' + esc(saleDayLabel(r.date)) + '</strong>' + (isToday ? '<span class="sales-today">오늘</span>' : '') +
-          (r.memo ? '<small class="sales-sub sales-memo">' + esc(r.memo) + '</small>' : '') + '</td>' +
+          (r.memo ? '<small class="sales-sub sales-memo">' + esc(r.memo) + '</small>' : '') +
+          (hq ? '' : '<button class="sales-memo-btn" data-sale-memo="' + esc(r.date) + '">' + (r.memo ? '메모 수정' : '+ 메모') + '</button>') + '</td>' +
         (showStore ? '<td data-label="지점">' + esc(storeName(r.storeId)) + '</td>' : '') +
         '<td data-label="배민" class="num"><span class="sales-amount">' + (r.empty ? '—' : won(r.baemin)) + '</span>' +
           (r.baeminOrders ? '<small class="sales-sub">' + r.baeminOrders.toLocaleString('ko-KR') + '건</small>' : '') + '</td>' +
@@ -1577,6 +1578,34 @@
     const input = $('[data-hall-date="' + date + '"]');
     const typed = input && input.value !== '' ? Math.max(0, Math.round(Number(input.value) || 0)) : Number(row.hall || 0);
     return Number(row.baemin || 0) + Number(row.coupang || 0) + typed;
+  }
+
+  /* 점주 — 날짜별 메모(선택). 홀·포장 금액은 그대로 두고 메모만 저장합니다. */
+  function openSaleMemoModal(date) {
+    const row = state.sales.find((r) => r.date === date) || { hall: 0, memo: '' };
+    openModal(saleDayLabel(date) + ' 메모', '' +
+      '<div class="form-grid">' +
+        '<p class="hint-box">홀·포장 매출과 함께 본사에 전달되는 짧은 메모입니다(80자). 비워 두면 메모가 지워집니다.</p>' +
+        '<label class="field-label" for="saleMemoText">메모</label>' +
+        '<textarea class="text-input" id="saleMemoText" rows="3" maxlength="80" placeholder="예) 단체 주문 4건 포함">' + esc(row.memo || '') + '</textarea>' +
+        '<p class="form-error" id="saleMemoError"></p>' +
+      '</div>' +
+      '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>취소</button>' +
+      '<button class="btn btn-primary" id="saleMemoSave">저장</button></div>');
+
+    $('#saleMemoSave').addEventListener('click', async () => {
+      const btn = $('#saleMemoSave');
+      btn.disabled = true;
+      try {
+        await DB.saveHallSales({ storeId: state.storeId, date, hall: Number(row.hall) || 0, memo: $('#saleMemoText').value.trim() });
+        closeModal();
+        await loadSales();
+        toast('메모를 저장했습니다.');
+      } catch (err) {
+        $('#saleMemoError').textContent = err.message || '저장하지 못했습니다.';
+        btn.disabled = false;
+      }
+    });
   }
 
   /* 본사 — 날짜·지점 매출 등록/수정 모달 */
@@ -2076,7 +2105,11 @@
           const storeId = editBtn.dataset.saleStoreId;
           const row = state.sales.find((r) => r.date === date && r.storeId === storeId);
           openSaleModal(row || { storeId, date });
+          return;
         }
+
+        const memoBtn = e.target.closest('[data-sale-memo]');
+        if (memoBtn) openSaleMemoModal(memoBtn.dataset.saleMemo);
       });
     }
 
