@@ -1538,7 +1538,7 @@
               'aria-label="' + esc(saleDayLabel(r.date)) + ' 홀·포장 매출">' +
             '<button class="btn btn-sm btn-primary" data-sale-save="' + esc(r.date) + '" disabled>저장</button>' +
           '</div>'
-        : '<span class="sales-amount">' + won(r.hall) + '</span>' +
+        : '<span class="sales-amount">' + (r.empty ? '—' : won(r.hall)) + '</span>' +
           (r.hallOrders ? '<small class="sales-sub">' + r.hallOrders.toLocaleString('ko-KR') + '건</small>' : '');
 
       const act = hq
