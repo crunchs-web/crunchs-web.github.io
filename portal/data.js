@@ -633,6 +633,43 @@ const LocalAdapter = (() => {
       return this.exportConfig();
     },
 
+    /* --- 일매출 (개발용: localStorage) --- */
+    async listDailySales(query) {
+      const q = query || {};
+      const all = read('dailySales', []);
+      return all
+        .filter((r) => (!q.month || String(r.date).slice(0, 7) === q.month))
+        .filter((r) => (!q.storeId || q.storeId === 'all' || r.storeId === q.storeId))
+        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    },
+    async upsertDailySale(sale) {
+      const all = read('dailySales', []);
+      const row = {
+        storeId: sale.storeId, date: sale.date,
+        baemin: Number(sale.baemin) || 0, baeminOrders: Number(sale.baeminOrders) || 0,
+        coupang: Number(sale.coupang) || 0, coupangOrders: Number(sale.coupangOrders) || 0,
+        hall: Number(sale.hall) || 0, hallOrders: Number(sale.hallOrders) || 0,
+        memo: sale.memo || ''
+      };
+      row.total = row.baemin + row.coupang + row.hall;
+      const idx = all.findIndex((r) => r.storeId === row.storeId && r.date === row.date);
+      if (idx >= 0) all[idx] = { ...all[idx], ...row }; else all.push(row);
+      write('dailySales', all);
+      return row;
+    },
+    async saveHallSales(sale) {
+      const all = read('dailySales', []);
+      const prev = all.find((r) => r.storeId === sale.storeId && r.date === sale.date);
+      return this.upsertDailySale({
+        storeId: sale.storeId, date: sale.date,
+        baemin: prev ? prev.baemin : 0, baeminOrders: prev ? prev.baeminOrders : 0,
+        coupang: prev ? prev.coupang : 0, coupangOrders: prev ? prev.coupangOrders : 0,
+        hall: sale.hall,
+        hallOrders: sale.hallOrders == null ? (prev ? prev.hallOrders : 0) : sale.hallOrders,
+        memo: sale.memo == null ? (prev ? prev.memo : '') : sale.memo
+      });
+    },
+
     /* --- 매뉴얼 체크리스트 (매장별 체크 상태) --- */
     async getChecklist(storeId) {      return read('checklist:' + storeId, {});
     },
@@ -677,6 +714,14 @@ const SupabaseAdapter = (() => {
   const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
   const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, authorId: r.author_id || null, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
   const mapItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, unit: r.unit || '', price: r.price, note: r.note || '상온', soldOut: !!r.sold_out });
+  const mapSale = (r) => ({
+    id: r.id, storeId: r.store_id, date: String(r.sale_date || '').slice(0, 10),
+    baemin: Number(r.baemin_sales) || 0, baeminOrders: Number(r.baemin_orders) || 0,
+    coupang: Number(r.coupang_sales) || 0, coupangOrders: Number(r.coupang_orders) || 0,
+    hall: Number(r.hall_sales) || 0, hallOrders: Number(r.hall_orders) || 0,
+    total: Number(r.total_sales) || 0, memo: r.memo || '',
+    updatedAt: r.updated_at || null
+  });
   const mapManual = (r) => {
     if (r.kind === 'manual') {
       return {
@@ -1426,6 +1471,69 @@ const SupabaseAdapter = (() => {
       const { error } = await client.from('checklists').delete().neq('store_id', '');
       if (error) fail(error);
       return this.exportConfig();
+    },
+
+    /* ======================================================================
+       일매출 (daily_sales)
+       · 조회: 본사는 전체 지점, 점주는 본인 매장만 (RLS)
+       · 배달 플랫폼(배민·쿠팡이츠) 입력/수정: 본사 전용
+       · 홀·포장 입력: 점주도 가능 — 단, RPC upsert_hall_sales 로만
+       ====================================================================== */
+    async listDailySales(query) {
+      const q = query || {};
+      const ym = String(q.month || '').slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(ym)) {
+        const d = new Date();
+        return this.listDailySales({ ...q, month: d.getFullYear() + '-' + pad(d.getMonth() + 1) });
+      }
+      const y = Number(ym.slice(0, 4));
+      const m = Number(ym.slice(5, 7));
+      const lastDay = new Date(y, m, 0).getDate();
+      let sel = client.from('daily_sales').select('*')
+        .gte('sale_date', ym + '-01')
+        .lte('sale_date', ym + '-' + pad(lastDay))
+        .order('sale_date', { ascending: false });
+      if (q.storeId && q.storeId !== 'all') sel = sel.eq('store_id', q.storeId);
+      const data = await rows(sel);
+      return data.map(mapSale);
+    },
+    /* 본사(hq) 전용 — 배민·쿠팡이츠·홀·포장 전부 입력/수정.
+       점주 계정으로 호출하면 RLS(0행)와 트리거(DAILY_SALES_PLATFORM_HQ_ONLY)가 막습니다. */
+    async upsertDailySale(sale) {
+      const payload = {
+        store_id: sale.storeId,
+        sale_date: sale.date,
+        baemin_sales: Math.max(0, Math.round(Number(sale.baemin) || 0)),
+        baemin_orders: Math.max(0, Math.round(Number(sale.baeminOrders) || 0)),
+        coupang_sales: Math.max(0, Math.round(Number(sale.coupang) || 0)),
+        coupang_orders: Math.max(0, Math.round(Number(sale.coupangOrders) || 0)),
+        hall_sales: Math.max(0, Math.round(Number(sale.hall) || 0)),
+        hall_orders: Math.max(0, Math.round(Number(sale.hallOrders) || 0)),
+        memo: String(sale.memo == null ? '' : sale.memo)
+      };
+      const data = await one(client.from('daily_sales')
+        .upsert(payload, { onConflict: 'store_id,sale_date' }).select().maybeSingle());
+      if (!data) throw new Error('매출을 저장하지 못했습니다. 본사 관리자 계정으로 다시 시도해 주세요.');
+      return mapSale(data);
+    },
+    /* 점주용 — 홀·포장 매출만 저장 (배달 플랫폼 컬럼은 건드리지 않습니다) */
+    async saveHallSales(sale) {
+      const { data, error } = await client.rpc('upsert_hall_sales', {
+        p_store_id: sale.storeId,
+        p_sale_date: sale.date,
+        p_hall_sales: Math.max(0, Math.round(Number(sale.hall) || 0)),
+        p_hall_orders: sale.hallOrders == null || sale.hallOrders === '' ? null : Math.max(0, Math.round(Number(sale.hallOrders) || 0)),
+        p_memo: sale.memo == null ? null : String(sale.memo)
+      });
+      if (error) {
+        const msg = error.message || '';
+        if (/DAILY_SALES_OTHER_STORE/.test(msg)) throw new Error('본인 매장 매출만 입력할 수 있습니다.');
+        if (/DAILY_SALES_PLATFORM_HQ_ONLY/.test(msg)) throw new Error('배민·쿠팡이츠 매출은 본사만 수정할 수 있습니다.');
+        if (/DAILY_SALES_FUTURE_DATE/.test(msg)) throw new Error('오늘 이후 날짜는 입력할 수 없습니다.');
+        if (/DAILY_SALES_NOT_AUTHENTICATED|JWT/i.test(msg)) throw new Error('로그인이 만료되었습니다. 다시 로그인해 주세요.');
+        fail(error, '매출을 저장하지 못했습니다.');
+      }
+      return mapSale(Array.isArray(data) ? data[0] : data);
     },
 
     /* ======================================================================

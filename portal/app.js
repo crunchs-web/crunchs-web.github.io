@@ -39,7 +39,12 @@
     manualSearch: '',
     adminTab: 'categories',
     adminItemCat: 'all',
-    adminSearch: ''
+    adminSearch: '',
+    /* 일매출 */
+    sales: [],
+    salesMonth: '',
+    salesStoreFilter: 'all',
+    salesLoading: false
   };
 
   /* ---------- 유틸 ---------- */
@@ -162,6 +167,7 @@
     state.posts = [];
     state.applications = [];
     state.invites = [];
+    state.sales = [];
     $('#appView').hidden = true;
     $('#loginView').hidden = false;
     const pw = $('#loginPassword');
@@ -1390,6 +1396,266 @@
   }
 
   /* ==========================================================================
+     일매출
+     ========================================================================== */
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  const todayISO = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  };
+  const thisMonth = () => todayISO().slice(0, 7);
+  const saleDayLabel = (dateStr) => {
+    const d = new Date(String(dateStr) + 'T00:00:00');
+    if (isNaN(d.getTime())) return String(dateStr);
+    return (d.getMonth() + 1) + '.' + pad2(d.getDate()) + ' (' + dayNames[d.getDay()] + ')';
+  };
+  const salesScope = () => (isHQ() ? state.salesStoreFilter : state.storeId);
+
+  /* 선택한 달의 1일~오늘(지난 달은 말일)을 최신 날짜부터 나열 */
+  function salesDays() {
+    const parts = String(state.salesMonth || '').split('-').map(Number);
+    const y = parts[0];
+    const m = parts[1];
+    if (!y || !m) return [];
+    const lastDay = new Date(y, m, 0).getDate();
+    const now = new Date();
+    const isCurrent = (y === now.getFullYear() && m === now.getMonth() + 1);
+    const maxDay = isCurrent ? now.getDate() : lastDay;
+    const out = [];
+    for (let d = maxDay; d >= 1; d -= 1) out.push(y + '-' + pad2(m) + '-' + pad2(d));
+    return out;
+  }
+
+  function salesStats(rows) {
+    return rows.reduce((a, r) => {
+      a.total += Number(r.total || 0);
+      a.baemin += Number(r.baemin || 0);
+      a.coupang += Number(r.coupang || 0);
+      a.hall += Number(r.hall || 0);
+      a.baeminOrders += Number(r.baeminOrders || 0);
+      a.coupangOrders += Number(r.coupangOrders || 0);
+      a.hallOrders += Number(r.hallOrders || 0);
+      return a;
+    }, { total: 0, baemin: 0, coupang: 0, hall: 0, baeminOrders: 0, coupangOrders: 0, hallOrders: 0 });
+  }
+
+  async function loadSales() {
+    if (!state.salesMonth) state.salesMonth = thisMonth();
+    state.salesLoading = true;
+    renderSales();
+    try {
+      state.sales = await DB.listDailySales({ month: state.salesMonth, storeId: salesScope() });
+    } catch (err) {
+      state.sales = [];
+      toast(err.message || '매출을 불러오지 못했습니다.');
+    } finally {
+      state.salesLoading = false;
+      renderSales();
+    }
+  }
+
+  function renderSales() {
+    if (!$('#salesTable')) return;
+    const hq = isHQ();
+    if (!state.salesMonth) state.salesMonth = thisMonth();
+    if (saleMonthInput()) saleMonthInput().value = state.salesMonth;
+
+    /* 지점 필터 (본사 전용) */
+    const filter = $('#salesStoreFilter');
+    if (filter) {
+      filter.hidden = !hq;
+      if (hq) {
+        filter.innerHTML = '<button class="filter' + (state.salesStoreFilter === 'all' ? ' is-active' : '') + '" data-sale-store="all">전체 지점</button>' +
+          STORE_PROFILES.map((s) => '<button class="filter' + (state.salesStoreFilter === s.id ? ' is-active' : '') + '" data-sale-store="' + esc(s.id) + '">' + esc(s.name) + '</button>').join('');
+      }
+    }
+    const addBtn = $('#salesAddBtn');
+    if (addBtn) addBtn.hidden = !hq;
+    const note = $('#salesOwnerNote');
+    if (note) note.hidden = hq;
+    const sub = $('#salesSub');
+    if (sub) {
+      sub.textContent = hq
+        ? '지점·날짜별 매출을 등록·수정합니다. 배민 · 쿠팡이츠 · 홀·포장을 한 번에 넣을 수 있습니다.'
+        : storeName(state.storeId) + ' 매출 조회 · 홀·포장 매출을 직접 입력할 수 있습니다.';
+    }
+
+    /* 요약 카드 */
+    const st = salesStats(state.sales);
+    const monthLabel = (function () {
+      const p = String(state.salesMonth).split('-');
+      return Number(p[0]) + '년 ' + Number(p[1]) + '월';
+    })();
+    const scopeLabel = !hq ? storeName(state.storeId) : (state.salesStoreFilter === 'all' ? '전체 지점' : storeName(state.salesStoreFilter));
+    if ($('#salesTotal')) $('#salesTotal').textContent = won(st.total);
+    if ($('#salesTotalFoot')) $('#salesTotalFoot').textContent = monthLabel + ' · ' + scopeLabel;
+    if ($('#salesBaemin')) $('#salesBaemin').textContent = won(st.baemin);
+    if ($('#salesBaeminFoot')) $('#salesBaeminFoot').textContent = st.baeminOrders.toLocaleString('ko-KR') + '건';
+    if ($('#salesCoupang')) $('#salesCoupang').textContent = won(st.coupang);
+    if ($('#salesCoupangFoot')) $('#salesCoupangFoot').textContent = st.coupangOrders.toLocaleString('ko-KR') + '건';
+    if ($('#salesHall')) $('#salesHall').textContent = won(st.hall);
+    if ($('#salesHallFoot')) $('#salesHallFoot').textContent = st.hallOrders ? st.hallOrders.toLocaleString('ko-KR') + '건 · 현장 결제' : '현장 결제';
+
+    /* 일별 목록 */
+    const showStore = hq && state.salesStoreFilter === 'all';
+    let rows;
+    if (showStore) {
+      rows = state.sales.slice().sort((a, b) => (a.date === b.date ? (a.storeId < b.storeId ? -1 : 1) : (a.date < b.date ? 1 : -1)));
+    } else {
+      const byDate = {};
+      state.sales.forEach((r) => { byDate[r.date] = r; });
+      const scopeId = salesScope();
+      rows = salesDays().map((d) => byDate[d] || {
+        date: d, storeId: scopeId, baemin: 0, baeminOrders: 0, coupang: 0, coupangOrders: 0,
+        hall: 0, hallOrders: 0, total: 0, memo: '', empty: true
+      });
+    }
+
+    const countEl = $('#salesCount');
+    if (countEl) countEl.textContent = state.salesLoading ? '불러오는 중…' : (state.sales.length ? state.sales.length + '일 기록' : '기록 없음');
+
+    if (!rows.length) {
+      $('#salesTable').innerHTML = '<div class="empty-card"><span class="empty-emoji" aria-hidden="true">📊</span>' +
+        '<p class="empty-title">이 달에 등록된 매출이 없습니다.</p>' +
+        '<p class="empty-text">' + (hq ? '오른쪽 위 「매출 등록」으로 첫 매출을 입력해 주세요.' : '홀·포장 매출을 입력하면 본사와 함께 볼 수 있습니다.') + '</p></div>';
+      return;
+    }
+
+    const head = '<thead><tr><th scope="col">날짜</th>' +
+      (showStore ? '<th scope="col">지점</th>' : '') +
+      '<th scope="col" class="num">배민</th><th scope="col" class="num">쿠팡이츠</th>' +
+      '<th scope="col" class="num">홀·포장</th><th scope="col" class="num">총매출</th>' +
+      '<th scope="col" class="sales-th-act"><span class="sr-only">수정</span></th></tr></thead>';
+
+    const body = rows.map((r) => {
+      const isToday = r.date === todayISO();
+      const canEditHall = !hq && r.date <= todayISO();
+      const hallCell = canEditHall
+        ? '<div class="sales-hall-edit">' +
+            '<input class="text-input sales-input" type="number" inputmode="numeric" min="0" step="1000" ' +
+              'data-hall-date="' + esc(r.date) + '" value="' + (r.empty ? '' : r.hall) + '" placeholder="0" ' +
+              'aria-label="' + esc(saleDayLabel(r.date)) + ' 홀·포장 매출">' +
+            '<button class="btn btn-sm btn-primary" data-sale-save="' + esc(r.date) + '" disabled>저장</button>' +
+          '</div>'
+        : '<span class="sales-amount">' + won(r.hall) + '</span>' +
+          (r.hallOrders ? '<small class="sales-sub">' + r.hallOrders.toLocaleString('ko-KR') + '건</small>' : '');
+
+      const act = hq
+        ? '<button class="btn btn-sm btn-ghost" data-sale-edit="' + esc(r.date) + '" data-sale-store-id="' + esc(r.storeId) + '">' + (r.empty ? '입력' : '수정') + '</button>'
+        : '';
+
+      return '<tr class="sales-tr' + (r.empty ? ' is-empty' : '') + (isToday ? ' is-today' : '') + '" data-sale-row="' + esc(r.date) + '">' +
+        '<td data-label="날짜"><strong class="sales-date">' + esc(saleDayLabel(r.date)) + '</strong>' + (isToday ? '<span class="sales-today">오늘</span>' : '') +
+          (r.memo ? '<small class="sales-sub sales-memo">' + esc(r.memo) + '</small>' : '') + '</td>' +
+        (showStore ? '<td data-label="지점">' + esc(storeName(r.storeId)) + '</td>' : '') +
+        '<td data-label="배민" class="num"><span class="sales-amount">' + (r.empty ? '—' : won(r.baemin)) + '</span>' +
+          (r.baeminOrders ? '<small class="sales-sub">' + r.baeminOrders.toLocaleString('ko-KR') + '건</small>' : '') + '</td>' +
+        '<td data-label="쿠팡이츠" class="num"><span class="sales-amount">' + (r.empty ? '—' : won(r.coupang)) + '</span>' +
+          (r.coupangOrders ? '<small class="sales-sub">' + r.coupangOrders.toLocaleString('ko-KR') + '건</small>' : '') + '</td>' +
+        '<td data-label="홀·포장" class="num">' + hallCell + '</td>' +
+        '<td data-label="총매출" class="num"><strong class="sales-total" data-sale-total="' + esc(r.date) + '">' + (r.empty ? '—' : won(r.total)) + '</strong></td>' +
+        '<td class="sales-td-act">' + act + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const foot = '<tfoot><tr><th scope="row">' + esc(monthLabel) + ' 합계</th>' +
+      (showStore ? '<td></td>' : '') +
+      '<td class="num">' + won(st.baemin) + '</td>' +
+      '<td class="num">' + won(st.coupang) + '</td>' +
+      '<td class="num">' + won(st.hall) + '</td>' +
+      '<td class="num"><strong>' + won(st.total) + '</strong></td>' +
+      '<td></td></tr></tfoot>';
+
+    $('#salesTable').innerHTML = '<table class="sales-table">' + head + '<tbody>' + body + '</tbody>' + foot + '</table>';
+  }
+
+  function saleMonthInput() { return $('#salesMonth'); }
+
+  function rowTotal(date) {
+    const row = state.sales.find((r) => r.date === date) || { baemin: 0, coupang: 0, hall: 0 };
+    const input = $('[data-hall-date="' + date + '"]');
+    const typed = input && input.value !== '' ? Math.max(0, Math.round(Number(input.value) || 0)) : Number(row.hall || 0);
+    return Number(row.baemin || 0) + Number(row.coupang || 0) + typed;
+  }
+
+  /* 본사 — 날짜·지점 매출 등록/수정 모달 */
+  function openSaleModal(sale) {
+    const s = sale || { storeId: (state.salesStoreFilter !== 'all' ? state.salesStoreFilter : STORE_PROFILES[0].id), date: todayISO() };
+    const storeOpts = STORE_PROFILES.map((p) =>
+      '<option value="' + esc(p.id) + '"' + (p.id === s.storeId ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
+    const numVal = (v) => (v == null ? '' : String(v));
+    openModal(s.id ? '매출 수정' : '매출 등록', '' +
+      '<div class="form-grid">' +
+        '<p class="hint-box">배민 · 쿠팡이츠 매출은 <b>본사만</b> 입력·수정할 수 있습니다. 총매출은 세 항목이 자동으로 합산됩니다.</p>' +
+        '<label class="field-label" for="saleStore">지점</label>' +
+        '<select id="saleStore">' + storeOpts + '</select>' +
+        '<label class="field-label" for="saleDate">날짜</label>' +
+        '<input class="text-input" id="saleDate" type="date" max="' + todayISO() + '" value="' + esc(s.date || todayISO()) + '">' +
+        '<div class="form-row">' +
+          '<div><label class="field-label" for="saleBaemin">배민 매출 (원)</label>' +
+          '<input class="text-input" id="saleBaemin" type="number" inputmode="numeric" min="0" step="1000" value="' + esc(numVal(s.baemin)) + '" placeholder="0"></div>' +
+          '<div><label class="field-label" for="saleBaeminOrders">배민 주문 (건)</label>' +
+          '<input class="text-input" id="saleBaeminOrders" type="number" inputmode="numeric" min="0" value="' + esc(numVal(s.baeminOrders)) + '" placeholder="0"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div><label class="field-label" for="saleCoupang">쿠팡이츠 매출 (원)</label>' +
+          '<input class="text-input" id="saleCoupang" type="number" inputmode="numeric" min="0" step="1000" value="' + esc(numVal(s.coupang)) + '" placeholder="0"></div>' +
+          '<div><label class="field-label" for="saleCoupangOrders">쿠팡이츠 주문 (건)</label>' +
+          '<input class="text-input" id="saleCoupangOrders" type="number" inputmode="numeric" min="0" value="' + esc(numVal(s.coupangOrders)) + '" placeholder="0"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+          '<div><label class="field-label" for="saleHall">홀·포장 매출 (원)</label>' +
+          '<input class="text-input" id="saleHall" type="number" inputmode="numeric" min="0" step="1000" value="' + esc(numVal(s.hall)) + '" placeholder="0"></div>' +
+          '<div><label class="field-label" for="saleHallOrders">홀·포장 주문 (건)</label>' +
+          '<input class="text-input" id="saleHallOrders" type="number" inputmode="numeric" min="0" value="' + esc(numVal(s.hallOrders)) + '" placeholder="0"></div>' +
+        '</div>' +
+        '<label class="field-label" for="saleMemo">메모 (선택)</label>' +
+        '<input class="text-input" id="saleMemo" type="text" maxlength="80" value="' + esc(s.memo || '') + '" placeholder="예) 단체 주문 5건 포함">' +
+        '<p class="sales-calc" id="saleCalc">합계 0원</p>' +
+        '<p class="form-error" id="saleError"></p>' +
+      '</div>' +
+      '<div class="form-actions"><button class="btn btn-ghost" data-close-modal>취소</button>' +
+      '<button class="btn btn-primary" id="saleSave">저장</button></div>');
+
+    const calc = () => {
+      const v = (id) => Math.max(0, Math.round(Number(($(id) || {}).value) || 0));
+      const total = v('#saleBaemin') + v('#saleCoupang') + v('#saleHall');
+      $('#saleCalc').textContent = '총매출 ' + won(total) + ' (배민 ' + won(v('#saleBaemin')) + ' · 쿠팡이츠 ' + won(v('#saleCoupang')) + ' · 홀·포장 ' + won(v('#saleHall')) + ')';
+    };
+    ['#saleBaemin', '#saleCoupang', '#saleHall'].forEach((sel) => { const el = $(sel); if (el) el.addEventListener('input', calc); });
+    calc();
+
+    $('#saleSave').addEventListener('click', async () => {
+      const storeId = $('#saleStore').value;
+      const date = $('#saleDate').value;
+      const errBox = $('#saleError');
+      errBox.textContent = '';
+      if (!date) { errBox.textContent = '날짜를 선택해 주세요.'; return; }
+      if (date > todayISO()) { errBox.textContent = '오늘 이후 날짜는 입력할 수 없습니다.'; return; }
+      const btn = $('#saleSave');
+      btn.disabled = true;
+      try {
+        await DB.upsertDailySale({
+          storeId, date,
+          baemin: $('#saleBaemin').value, baeminOrders: $('#saleBaeminOrders').value,
+          coupang: $('#saleCoupang').value, coupangOrders: $('#saleCoupangOrders').value,
+          hall: $('#saleHall').value, hallOrders: $('#saleHallOrders').value,
+          memo: $('#saleMemo').value.trim()
+        });
+        closeModal();
+        state.salesMonth = date.slice(0, 7);
+        if (state.salesStoreFilter !== 'all') state.salesStoreFilter = storeId;
+        await loadSales();
+        toast(storeName(storeId) + ' ' + saleDayLabel(date) + ' 매출을 저장했습니다.');
+      } catch (err) {
+        errBox.textContent = err.message || '저장하지 못했습니다.';
+        btn.disabled = false;
+      }
+    });
+  }
+
+  /* ==========================================================================
      내비게이션
      ========================================================================== */
   function navigate(view) {
@@ -1410,6 +1676,7 @@
     if (view === 'manual') { renderManualList(); renderChecklist(); }
     if (view === 'recipe') renderRecipes();
     if (view === 'admin') renderAdmin();
+    if (view === 'sales') loadSales();
   }
 
   /* ==========================================================================
@@ -1746,6 +2013,73 @@
       renderChecklistProgress();
     });
 
+    /* ---------- 일매출 ---------- */
+    if (saleMonthInput()) saleMonthInput().addEventListener('change', (e) => {
+      const v = e.target.value;
+      if (!/^\d{4}-\d{2}$/.test(v)) return;
+      state.salesMonth = v;
+      loadSales();
+    });
+    if ($('#salesStoreFilter')) $('#salesStoreFilter').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-sale-store]');
+      if (!chip) return;
+      state.salesStoreFilter = chip.dataset.saleStore;
+      loadSales();
+    });
+    if ($('#salesAddBtn')) $('#salesAddBtn').addEventListener('click', () => openSaleModal(null));
+
+    if ($('#salesTable')) {
+      /* 점주: 홀·포장 금액을 고치면 저장 버튼과 합계가 바로 바뀝니다. */
+      $('#salesTable').addEventListener('input', (e) => {
+        const input = e.target.closest('[data-hall-date]');
+        if (!input) return;
+        const date = input.dataset.hallDate;
+        const btn = $('[data-sale-save="' + date + '"]');
+        if (btn) btn.disabled = false;
+        const cell = $('[data-sale-total="' + date + '"]');
+        if (cell) cell.textContent = won(rowTotal(date));
+      });
+
+      $('#salesTable').addEventListener('keydown', (e) => {
+        const input = e.target.closest('[data-hall-date]');
+        if (!input || e.key !== 'Enter') return;
+        e.preventDefault();
+        const btn = $('[data-sale-save="' + input.dataset.hallDate + '"]');
+        if (btn) btn.click();
+      });
+
+      $('#salesTable').addEventListener('click', async (e) => {
+        const saveBtn = e.target.closest('[data-sale-save]');
+        if (saveBtn) {
+          const date = saveBtn.dataset.saleSave;
+          const input = $('[data-hall-date="' + date + '"]');
+          const raw = input ? input.value : '';
+          if (raw !== '' && Number(raw) < 0) { toast('0원 이상으로 입력해 주세요.'); return; }
+          saveBtn.disabled = true;
+          const label = saveBtn.textContent;
+          saveBtn.textContent = '저장 중';
+          try {
+            await DB.saveHallSales({ storeId: state.storeId, date, hall: raw === '' ? 0 : raw });
+            await loadSales();
+            toast(saleDayLabel(date) + ' 홀·포장 매출을 저장했습니다.');
+          } catch (err) {
+            toast(err.message || '저장하지 못했습니다.');
+            saveBtn.disabled = false;
+            saveBtn.textContent = label;
+          }
+          return;
+        }
+
+        const editBtn = e.target.closest('[data-sale-edit]');
+        if (editBtn) {
+          const date = editBtn.dataset.saleEdit;
+          const storeId = editBtn.dataset.saleStoreId;
+          const row = state.sales.find((r) => r.date === date && r.storeId === storeId);
+          openSaleModal(row || { storeId, date });
+        }
+      });
+    }
+
     /* ---------- 관리자 설정 (본사 전용) ---------- */
     $('#adminCatAdd').addEventListener('click', addCategoryFromForm);
     if ($('#inviteCreate')) $('#inviteCreate').addEventListener('click', addInviteFromForm);
@@ -1965,6 +2299,7 @@
   async function init() {
     bindEvents();
     registerServiceWorker();
+    if (!state.salesMonth) state.salesMonth = thisMonth();
     renderChecklist();
 
     let profile = null;

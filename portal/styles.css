@@ -746,8 +746,58 @@ textarea { resize: vertical; }
 
 /* ---------- 폼 ---------- */
 .form-grid { display: grid; gap: 4px; }
+.form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.form-row > div { min-width: 0; }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 .form-error { font-size: 12px; color: var(--red); margin-top: 6px; min-height: 0; }
+
+/* ==========================================================================
+   일매출
+   ========================================================================== */
+.sales-head-actions { display: flex; gap: 8px; align-items: center; }
+.sales-month { width: auto; min-width: 148px; font-weight: 700; }
+.kpi-grid--sales { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-value--sales strong { font-size: 22px; }
+
+.sales-note {
+  display: flex; gap: 8px; align-items: flex-start;
+  background: var(--green-50); border: 1px solid var(--green-100); color: var(--green-800);
+  border-radius: 12px; padding: 10px 13px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px;
+}
+
+.sales-panel { padding-bottom: 6px; }
+.sales-table-wrap { overflow-x: auto; margin: 0 -4px; }
+.sales-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sales-table th, .sales-table td { padding: 10px 8px; text-align: left; vertical-align: middle; }
+.sales-table thead th {
+  font-size: 11.5px; font-weight: 800; letter-spacing: .01em; color: var(--mute);
+  border-bottom: 1px solid var(--line-strong); white-space: nowrap;
+}
+.sales-table tbody tr { border-bottom: 1px solid var(--line); }
+.sales-table tbody tr.is-today { background: var(--green-50); }
+.sales-table tbody tr.is-empty { color: var(--faint); }
+.sales-table td.num, .sales-table th.num { text-align: right; white-space: nowrap; }
+.sales-table .sales-th-act, .sales-table .sales-td-act { width: 1%; text-align: right; }
+.sales-date { font-size: 13px; font-weight: 800; }
+.sales-today {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  background: var(--green-700); color: #fff; font-size: 10.5px; font-weight: 800; vertical-align: 1px;
+}
+.sales-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sales-sub { display: block; font-size: 11px; color: var(--faint); font-weight: 600; margin-top: 1px; }
+.sales-memo { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-total { font-size: 14px; font-weight: 900; color: var(--green-800); font-variant-numeric: tabular-nums; }
+.sales-table tfoot th, .sales-table tfoot td {
+  border-top: 2px solid var(--line-strong); font-weight: 800; padding-top: 12px; padding-bottom: 12px;
+}
+.sales-table tfoot strong { color: var(--green-800); font-size: 14px; }
+
+.sales-hall-edit { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.sales-input { width: 104px; padding: 7px 9px; font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.sales-calc {
+  font-size: 12px; font-weight: 700; color: var(--green-800);
+  background: var(--green-50); border-radius: 10px; padding: 8px 11px; margin-top: 6px;
+}
 
 /* ==========================================================================
    관리자 설정 (본사 전용)
@@ -942,6 +992,66 @@ textarea { resize: vertical; }
   .manual-tools { align-items: stretch; }
   .manual-tools .search-box { width: 100%; }
   .manual-sections { gap: 22px; }
+}
+
+/* ---------- 일매출 반응형 ---------- */
+@media (max-width: 1180px) {
+  .kpi-grid--sales { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .sales-head-actions { width: 100%; }
+  .view-head:has(.sales-head-actions) { flex-wrap: wrap; }
+  .sales-month { flex: 1 1 auto; }
+
+  /* 표 → 카드형 목록 */
+  .sales-table-wrap { overflow-x: visible; margin: 0; }
+  .sales-table, .sales-table tbody, .sales-table tfoot, .sales-table tr, .sales-table td, .sales-table th { display: block; width: 100%; }
+  .sales-table thead { display: none; }
+  .sales-table tbody tr {
+    border: 1px solid var(--line); border-radius: 14px; background: #fff;
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .sales-table tbody tr.is-today { border-color: var(--green-600); background: var(--green-50); }
+  .sales-table tbody tr.is-empty { background: #FCFDFC; }
+  .sales-table td {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 3px 0; text-align: right; border: 0;
+  }
+  .sales-table td.num { text-align: right; }
+  .sales-table td::before {
+    content: attr(data-label); flex: none;
+    font-size: 11.5px; font-weight: 700; color: var(--mute); text-align: left;
+  }
+  .sales-table td:first-child {
+    display: block; text-align: left; padding-bottom: 6px; margin-bottom: 4px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .sales-table td:first-child::before { display: none; }
+  .sales-table .sales-sub { display: inline; margin-left: 4px; }
+  .sales-table .sales-memo { display: block; margin-left: 0; }
+  .sales-table td.sales-td-act { justify-content: flex-end; padding-top: 8px; }
+  .sales-table td.sales-td-act::before { display: none; }
+  .sales-table td.sales-td-act .btn { width: 100%; }
+  .sales-hall-edit { flex: 1; justify-content: flex-end; }
+  .sales-input { width: 100%; max-width: 130px; }
+
+  .sales-table tfoot tr {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 4px 4px;
+    border-top: 2px solid var(--line-strong); margin-top: 4px;
+  }
+  .sales-table tfoot th, .sales-table tfoot td {
+    display: inline-flex; gap: 6px; padding: 0; border: 0; font-size: 12px;
+  }
+  .sales-table tfoot td::before { content: attr(data-label); color: var(--mute); font-weight: 700; }
+  .sales-table tfoot th { flex: 0 0 100%; font-size: 12.5px; }
+  .sales-table tfoot td:empty { display: none; }
+}
+
+@media (max-width: 620px) {
+  .form-row { grid-template-columns: 1fr; }
+  .sales-note { font-size: 12px; }
+  .kpi-value--sales strong { font-size: 19px; }
 }
 
 /* ---------- 관리자 설정 반응형 ---------- */
