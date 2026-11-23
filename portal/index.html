@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261122e">
+<link rel="stylesheet" href="styles.css?v=20261123a">
 </head>
 <body>
 
@@ -199,7 +199,7 @@
           <p class="side-card-title">가맹점주용 실무가이드</p>
           <a href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">세무 · 노무 · 임대차 실무 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRB점주용 · v1.7</p>
+        <p class="side-version">CRB점주용 · v1.8</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -843,12 +843,34 @@
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden>
-  <span class="toast-icon" aria-hidden="true">✓</span>
-  <span id="toastText">저장되었습니다.</span>
+  <span class="toast-icon" aria-hidden="true">\u2713</span>
+  <span id="toastText">\uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4.</span>
+</div>
+
+<!-- 공지 첨부 사진 크게 보기 -->
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lightbox-inner" role="dialog" aria-modal="true" aria-label="첨부 사진 크게 보기">
+    <div class="lightbox-bar">
+      <span class="lightbox-label" id="lightboxLabel">첨부 사진</span>
+      <button class="lightbox-close" id="lightboxClose" type="button" aria-label="사진 닫기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="lightbox-stage">
+      <button class="lightbox-nav" id="lightboxPrev" type="button" aria-label="이전 사진">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <img class="lightbox-img" id="lightboxImg" alt="">
+      <button class="lightbox-nav" id="lightboxNext" type="button" aria-label="다음 사진">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div class="lightbox-count" id="lightboxCount">1 / 1</div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="data.js?v=20261122e"></script>
-<script src="app.js?v=20261122e"></script>
+<script src="data.js?v=20261123a"></script>
+<script src="app.js?v=20261123a"></script>
 </body>
 </html>

@@ -285,6 +285,7 @@ const LocalAdapter = (() => {
       const cat = p.category !== undefined ? p.category : p.cat;
       if (cat !== undefined) found.cat = String(cat == null ? '' : cat).trim();
       if (p.body !== undefined) found.body = String(p.body == null ? '' : p.body);
+      if (p.images !== undefined) found.images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
       const pinned = p.pinned !== undefined ? p.pinned : p.important;
       if (pinned !== undefined) found.important = !!pinned;
       found.updatedAt = new Date().toISOString();
@@ -709,7 +710,8 @@ const SupabaseAdapter = (() => {
   });
   const mapNotice = (r) => ({
     id: r.id, title: r.title, cat: r.cat || '', important: !!r.important,
-    date: r.created_at, updatedAt: r.updated_at || null, body: r.body || '', comments: []
+    date: r.created_at, updatedAt: r.updated_at || null, body: r.body || '',
+    images: Array.isArray(r.images) ? r.images.filter(Boolean) : [], comments: []
   });
   const mapComment = (c) => ({ by: c.by_role, name: c.author_name, body: c.body, date: c.created_at });
   const mapPost = (r, comments) => ({ id: r.id, storeId: r.store_id, authorId: r.author_id || null, title: r.title, body: r.body || '', date: r.created_at, comments: comments || [] });
@@ -970,7 +972,8 @@ const SupabaseAdapter = (() => {
         title: String(notice.title || '').trim(),
         cat: notice.cat || '',
         important: !!notice.important,
-        body: notice.body || ''
+        body: notice.body || '',
+        images: Array.isArray(notice.images) ? notice.images.filter(Boolean) : []
       };
       if (!payload.title) throw new Error('공지 제목을 입력해 주세요.');
       const data = await one(client.from('notices').insert(payload).select().single());
@@ -988,6 +991,7 @@ const SupabaseAdapter = (() => {
       const cat = p.category !== undefined ? p.category : p.cat;
       if (cat !== undefined) body.cat = String(cat == null ? '' : cat).trim();
       if (p.body !== undefined) body.body = String(p.body == null ? '' : p.body);
+      if (p.images !== undefined) body.images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
       const pinned = p.pinned !== undefined ? p.pinned : p.important;
       if (pinned !== undefined) body.important = !!pinned;
       const data = await one(client.from('notices').update(body).eq('id', id).select().maybeSingle());

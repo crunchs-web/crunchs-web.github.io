@@ -96,8 +96,57 @@
     if (e.target.closest('[data-close-modal]')) closeModal();
   });
   document.addEventListener('keydown', (e) => {
+    const lb = $('#lightbox');
+    if (lb && !lb.hidden) {
+      if (e.key === 'Escape') { closeLightbox(); return; }
+      if (e.key === 'ArrowLeft') { stepLightbox(-1); return; }
+      if (e.key === 'ArrowRight') { stepLightbox(1); return; }
+    }
     if (e.key === 'Escape' && !$('#modal').hidden) closeModal();
   });
+
+  /* ---------- 공지 첨부 사진 크게 보기 (라이트박스) ---------- */
+  const lightbox = { images: [], index: 0, title: '' };
+
+  function renderLightbox() {
+    const total = lightbox.images.length;
+    const img = $('#lightboxImg');
+    if (!img || !total) return;
+    img.src = lightbox.images[lightbox.index];
+    img.alt = (lightbox.title ? lightbox.title + ' ' : '') + '사진 ' + (lightbox.index + 1);
+    $('#lightboxLabel').textContent = lightbox.title || '첨부 사진';
+    $('#lightboxCount').textContent = (lightbox.index + 1) + ' / ' + total;
+    $('#lightboxPrev').hidden = total < 2;
+    $('#lightboxNext').hidden = total < 2;
+  }
+
+  function openLightbox(images, index, title) {
+    const list = (images || []).filter(Boolean);
+    const el = $('#lightbox');
+    if (!el || !list.length) return;
+    lightbox.images = list;
+    lightbox.index = Math.min(Math.max(Number(index) || 0, 0), list.length - 1);
+    lightbox.title = title || '';
+    renderLightbox();
+    el.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function stepLightbox(delta) {
+    const total = lightbox.images.length;
+    if (total < 2) return;
+    lightbox.index = (lightbox.index + delta + total) % total;
+    renderLightbox();
+  }
+
+  function closeLightbox() {
+    const el = $('#lightbox');
+    if (!el || el.hidden) return;
+    el.hidden = true;
+    const img = $('#lightboxImg');
+    if (img) img.removeAttribute('src');
+    if ($('#modal').hidden) document.body.style.overflow = '';
+  }
 
   /* ==========================================================================
      세션 · 로그인 (Supabase Auth)
@@ -548,15 +597,41 @@
 
     $('#noticeList').innerHTML = list.length ? list.map((n) => {
       const unread = !state.readIds.includes(n.id);
+      const imgs = Array.isArray(n.images) ? n.images.filter(Boolean) : [];
+      const thumb = imgs.length
+        ? '<span class="notice-thumb">' +
+            '<img src="' + esc(imgs[0]) + '" alt="" loading="lazy" decoding="async">' +
+            (imgs.length > 1 ? '<span class="notice-photo-count">사진 ' + imgs.length + '</span>' : '') +
+          '</span>'
+        : '';
       return '<button class="notice-card' + (n.important ? ' is-important' : '') + (unread ? ' is-unread' : '') + '" data-open-notice="' + esc(n.id) + '">' +
         '<span class="notice-tag" data-cat="' + esc(n.cat) + '">' + esc(n.cat) + '</span>' +
         '<span class="notice-body-main">' +
           '<span class="notice-title">' + esc(n.title) + '</span>' +
           '<span class="notice-snippet">' + esc(n.body.replace(/\n/g, ' ').slice(0, 90)) + '</span>' +
         '</span>' +
+        thumb +
         '<span class="notice-date">' + fmtDate(n.date) + '</span>' +
       '</button>';
     }).join('') : '<div class="empty-line">등록된 공지가 없습니다.</div>';
+  }
+
+  /* 상세 모달 안의 첨부 사진 그리드 — 사진을 누르면 라이트박스로 크게 봅니다. */
+  function noticeGalleryHtml(n) {
+    const imgs = Array.isArray(n.images) ? n.images.filter(Boolean) : [];
+    if (!imgs.length) return '';
+    return '<div class="notice-gallery-head">' +
+        '<span class="notice-gallery-title">첨부 사진 <em>' + imgs.length + '장</em></span>' +
+        '<small>사진을 누르면 크게 볼 수 있습니다.</small>' +
+      '</div>' +
+      '<div class="notice-gallery' + (imgs.length === 1 ? ' is-single' : '') + '">' +
+        imgs.map((src, i) =>
+          '<button class="notice-photo" type="button" data-photo-index="' + i + '" aria-label="사진 ' + (i + 1) + ' 크게 보기">' +
+            '<img src="' + esc(src) + '" alt="' + esc(n.title) + ' 사진 ' + (i + 1) + '" loading="lazy" decoding="async">' +
+            '<span class="notice-photo-no">' + (i + 1) + '</span>' +
+          '</button>'
+        ).join('') +
+      '</div>';
   }
 
   async function openNotice(id) {
@@ -585,7 +660,17 @@
       '</div>' +
       '<h3 style="font-size:17px;font-weight:800;letter-spacing:-.02em;margin-bottom:14px;line-height:1.45">' + esc(n.title) + '</h3>' +
       '<div class="notice-article">' + esc(n.body) + '</div>' +
+      noticeGalleryHtml(n) +
       actions);
+
+    const gallery = $('#modalBody .notice-gallery');
+    if (gallery) {
+      gallery.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-photo-index]');
+        if (!btn) return;
+        openLightbox(n.images, Number(btn.dataset.photoIndex) || 0, n.title);
+      });
+    }
 
     if (isHQ()) {
       $('#editNoticeBtn').addEventListener('click', () => openNoticeForm(n));
@@ -595,6 +680,14 @@
 
   /* 공지 작성 · 수정 모달 (본사 관리자 전용) */
   const NOTICE_CATS = ['신메뉴', '단가변동', '위생점검', '일반'];
+
+  function noticeImageRowHtml(src) {
+    return '<div class="image-field">' +
+      '<input class="text-input image-url" type="text" inputmode="url" spellcheck="false" placeholder="assets/notices/beef-burger-1.jpg" value="' + esc(src || '') + '">' +
+      '<button class="icon-btn image-remove" type="button" aria-label="사진 삭제" title="사진 삭제">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>' +
+      '</button></div>';
+  }
 
   function openNoticeForm(notice) {
     const editing = !!notice;
@@ -613,12 +706,38 @@
         '<label class="check-item" style="margin-top:10px"><input type="checkbox" id="noticeImportant"' + (editing && notice.important ? ' checked' : '') + '><span>중요 공지로 상단 고정</span></label>' +
         '<label class="field-label" for="noticeBody">내용</label>' +
         '<textarea class="text-input" id="noticeBody" rows="6" placeholder="점주가 알아야 할 내용을 입력하세요.">' + esc(editing ? notice.body : '') + '</textarea>' +
+        '<label class="field-label" style="margin-top:12px">첨부 사진 (선택)</label>' +
+        '<div class="image-fields" id="noticeImages">' +
+          (editing && Array.isArray(notice.images) && notice.images.length ? notice.images.map(noticeImageRowHtml).join('') : noticeImageRowHtml('')) +
+        '</div>' +
+        '<button class="btn btn-ghost btn-sm add-image-btn" id="addNoticeImage" type="button">+ 사진 주소 추가</button>' +
+        '<p class="field-hint">포털에 올린 사진 경로(예: <code>assets/notices/beef-burger-1.jpg</code>)나 https 주소를 넣으면 목록 카드와 상세 화면에 표시됩니다.</p>' +
         '<p class="form-error" id="noticeError"></p>' +
       '</div>' +
       '<div class="form-actions"><button class="btn btn-ghost" data-close-modal type="button">취소</button>' +
       '<button class="btn btn-primary" id="saveNotice" type="button">' + (editing ? '수정 저장' : '공지 등록') + '</button></div>');
 
     $('#noticeTitle').focus();
+
+    /* 사진 주소 입력칸 추가·삭제 */
+    $('#addNoticeImage').addEventListener('click', () => {
+      $('#noticeImages').insertAdjacentHTML('beforeend', noticeImageRowHtml(''));
+      const inputs = $$('#noticeImages .image-url');
+      const last = inputs[inputs.length - 1];
+      if (last) last.focus();
+    });
+    $('#noticeImages').addEventListener('click', (e) => {
+      const btn = e.target.closest('.image-remove');
+      if (!btn) return;
+      const rows = $$('#noticeImages .image-field');
+      if (rows.length <= 1) {
+        const only = rows[0] && rows[0].querySelector('.image-url');
+        if (only) { only.value = ''; only.focus(); }
+        return;
+      }
+      const row = btn.closest('.image-field');
+      if (row) row.remove();
+    });
 
     $('#saveNotice').addEventListener('click', async () => {
       const title = $('#noticeTitle').value.trim();
@@ -629,14 +748,15 @@
       }
       const cat = $('#noticeCat').value;
       const important = $('#noticeImportant').checked;
+      const images = $$('#noticeImages .image-url').map((el) => el.value.trim()).filter(Boolean);
       const saveBtn = $('#saveNotice');
       saveBtn.disabled = true;
       saveBtn.textContent = '저장 중…';
       try {
         if (editing) {
-          await DB.updateNotice(notice.id, { title, body, category: cat, pinned: important });
+          await DB.updateNotice(notice.id, { title, body, category: cat, pinned: important, images });
         } else {
-          await DB.createNotice({ title, body, cat, important });
+          await DB.createNotice({ title, body, cat, important, images });
         }
         closeModal();
         await reloadAll();
@@ -1978,6 +2098,17 @@
     });
 
     $('#newNoticeBtn').addEventListener('click', () => openNoticeForm(null));
+
+    /* 공지 첨부 사진 라이트박스 — 닫기·이전·다음 */
+    if ($('#lightboxClose')) $('#lightboxClose').addEventListener('click', closeLightbox);
+    if ($('#lightboxPrev')) $('#lightboxPrev').addEventListener('click', () => stepLightbox(-1));
+    if ($('#lightboxNext')) $('#lightboxNext').addEventListener('click', () => stepLightbox(1));
+    if ($('#lightbox')) {
+      $('#lightbox').addEventListener('click', (e) => {
+        /* 사진 바깥(어두운 배경)을 누르면 닫습니다. 사진 자체를 누르면 그대로 둡니다. */
+        if (e.target.classList && e.target.classList.contains('lightbox')) closeLightbox();
+      });
+    }
 
     /* 건의 게시판 */
     $('#newPostBtn').addEventListener('click', () => {
