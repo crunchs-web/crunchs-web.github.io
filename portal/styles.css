@@ -1303,13 +1303,13 @@ textarea { resize: vertical; }
   .pg-table tbody tr.g-group td em { float: right; }
 
   .pg-table tbody tr:not(.g-group) {
-    position: relative; margin: 0 0 10px; padding: 13px 14px 13px 44px;
+    position: relative; margin: 0 0 10px; padding: 13px 14px 13px 48px;
     background: #fff; border: 1px solid var(--line); border-radius: 14px;
   }
   .pg-table tbody tr:not(.g-group):hover td { background: transparent; }
   .pg-table tbody tr:not(.g-group) td { padding: 0; border: 0; }
   .pg-table td.g-no {
-    position: absolute; left: 13px; top: 15px; width: 22px;
+    position: absolute; left: 15px; top: 16px; width: 22px;
     font-size: 11px; line-height: 1; text-align: left; color: var(--faint);
   }
   .pg-table td.g-name { margin-bottom: 7px; min-width: 0; }
@@ -1319,7 +1319,7 @@ textarea { resize: vertical; }
     margin-top: 5px; font-size: 12.2px; line-height: 1.45;
   }
   .g-brand::before, .g-vendor::before, .g-note::before {
-    content: attr(data-label); flex: 0 0 46px; padding-top: 1px;
+    content: attr(data-label); flex: 0 0 auto; width: 46px; margin-right: 8px; padding-top: 1px;
     font-size: 10.5px; font-weight: 700; color: var(--faint);
   }
   .g-brand > *, .g-vendor > *, .g-note > * { min-width: 0; }
