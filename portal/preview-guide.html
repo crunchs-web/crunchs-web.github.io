@@ -7,41 +7,69 @@
   body { margin: 0; background: #1a1a1a; font-family: system-ui, sans-serif; }
   .row { display: flex; gap: 20px; padding: 16px; align-items: flex-start; }
   .box { background: #fff; border-radius: 10px; overflow: hidden; }
-  .cap { background: #0B0F0D; color: #9FDBB6; font-size: 12px; padding: 4px 10px; }
+  .cap { background: #0B0F0D; color: #9FDBB6; font-size: 11px; padding: 4px 10px; }
   iframe { border: 0; display: block; background: #F3F6F1; }
 </style>
 </head>
 <body>
 <div class="row">
-  <div class="box"><div class="cap">390 × 844</div><iframe id="f390" src="./index.html" width="390" height="844"></iframe></div>
-  <div class="box"><div class="cap">320 × 844</div><iframe id="f320" src="./index.html" width="320" height="844"></iframe></div>
+  <div class="box"><div class="cap" id="c390">390 × 844</div><iframe id="f390" src="./index.html" width="390" height="844"></iframe></div>
+  <div class="box"><div class="cap" id="c320">320 × 844</div><iframe id="f320" src="./index.html" width="320" height="844"></iframe></div>
 </div>
 <script>
 (function () {
-  function prep(f) {
-    var tries = 0;
+  function report(id, f, extra) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try {
+      var d = f.contentDocument;
+      var de = d.documentElement;
+      var card = d.querySelector('.guide-card');
+      var rows = d.querySelectorAll('#guideBody tr:not(.g-group)').length;
+      el.textContent = f.width + 'px · doc ' + de.scrollWidth + '/' + de.clientWidth +
+        ' · card ' + (card ? card.scrollWidth + '/' + card.clientWidth : '-') +
+        ' · rows ' + rows + (extra || '');
+    } catch (e) {
+      el.textContent = f.width + 'px · ' + e.name;
+    }
+  }
+
+  function prep(id, f) {
+    var started = Date.now();
+    var settled = false;
     var timer = setInterval(function () {
-      tries++;
       try {
         var d = f.contentDocument;
         var app = d.getElementById('appView');
-        var tab = d.querySelector('[data-order-tab="guide"]');
-        if (app && !app.hidden && tab) {
-          clearInterval(timer);
+        if (!app || app.hidden) return;
+        if (!settled) {
+          /* 앱이 로그인 후 대시보드로 이동하는 것을 기다렸다가 한 번만 탭을 누릅니다. */
+          if (Date.now() - started < 2500) return;
+          settled = true;
+          var tab = d.querySelector('[data-order-tab="guide"]');
+          if (tab) tab.click();
+        }
+        /* 대시보드로 되돌아가는 경우를 대비해 4초간 발주하기 화면을 유지 */
+        if (Date.now() - started < 7000) {
           Array.prototype.forEach.call(d.querySelectorAll('.view'), function (v) {
             v.classList.toggle('is-active', v.dataset.view === 'orders');
           });
-          tab.click();
-          var sec = d.querySelector('[data-view="orders"]');
-          if (sec) sec.scrollIntoView();
+        }
+        var panel = d.getElementById('orderGuidePanel');
+        if (panel && !panel.hidden) {
+          var top = panel.getBoundingClientRect().top + d.scrollingElement.scrollTop;
+          d.scrollingElement.scrollTop = Math.max(0, top - 8);
+          report(id, f);
+          if (Date.now() - started > 7000) clearInterval(timer);
         }
       } catch (e) { /* not ready */ }
-      if (tries > 80) clearInterval(timer);
-    }, 200);
+    }, 250);
+    setTimeout(function () { clearInterval(timer); report(id, f); }, 12000);
   }
-  ['f390', 'f320'].forEach(function (id) {
-    var f = document.getElementById(id);
-    if (f) { f.addEventListener('load', function () { prep(f); }); }
+
+  ['f390', 'f320'].forEach(function (key) {
+    var f = document.getElementById(key);
+    if (f) f.addEventListener('load', function () { prep('c' + key.slice(1), f); });
   });
 })();
 </script>
