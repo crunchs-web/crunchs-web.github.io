@@ -354,9 +354,9 @@ textarea { resize: vertical; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .panel-head h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
 
-.mini-list { display: grid; }
+.mini-list { display: grid; grid-template-columns: minmax(0, 1fr); }
 .mini-row {
-  display: flex; align-items: center; gap: 12px; padding: 12px 2px;
+  display: flex; align-items: center; gap: 12px; padding: 12px 2px; min-width: 0;
   border-top: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0;
   text-align: left;
 }
