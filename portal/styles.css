@@ -784,10 +784,11 @@ textarea { resize: vertical; }
 
 /* ---------- 공지 첨부 사진 크게 보기 ---------- */
 .lightbox {
-  position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px;
+  position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center;
+  padding: 16px; overflow: hidden;
   background: rgba(6,12,9,.91); backdrop-filter: blur(4px); animation: fade .16s ease;
 }
-.lightbox-inner { width: min(1040px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.lightbox-inner { width: min(1040px, 100%); max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .lightbox-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lightbox-label {
   font-size: 12.5px; font-weight: 700; color: #E6F0E9; letter-spacing: -.01em;
