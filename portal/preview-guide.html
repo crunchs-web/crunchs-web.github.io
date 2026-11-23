@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가이드 반응형 확인(임시)</title>
+<style>
+  body { margin: 0; background: #1a1a1a; font-family: system-ui, sans-serif; }
+  .row { display: flex; gap: 20px; padding: 16px; align-items: flex-start; }
+  .box { background: #fff; border-radius: 10px; overflow: hidden; }
+  .cap { background: #0B0F0D; color: #9FDBB6; font-size: 12px; padding: 4px 10px; }
+  iframe { border: 0; display: block; background: #F3F6F1; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="box"><div class="cap">390 × 844</div><iframe id="f390" src="./index.html" width="390" height="844"></iframe></div>
+  <div class="box"><div class="cap">320 × 844</div><iframe id="f320" src="./index.html" width="320" height="844"></iframe></div>
+</div>
+<script>
+(function () {
+  function prep(f) {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      try {
+        var d = f.contentDocument;
+        var app = d.getElementById('appView');
+        var tab = d.querySelector('[data-order-tab="guide"]');
+        if (app && !app.hidden && tab) {
+          clearInterval(timer);
+          Array.prototype.forEach.call(d.querySelectorAll('.view'), function (v) {
+            v.classList.toggle('is-active', v.dataset.view === 'orders');
+          });
+          tab.click();
+          var sec = d.querySelector('[data-view="orders"]');
+          if (sec) sec.scrollIntoView();
+        }
+      } catch (e) { /* not ready */ }
+      if (tries > 80) clearInterval(timer);
+    }, 200);
+  }
+  ['f390', 'f320'].forEach(function (id) {
+    var f = document.getElementById(id);
+    if (f) { f.addEventListener('load', function () { prep(f); }); }
+  });
+})();
+</script>
+</body>
+</html>
