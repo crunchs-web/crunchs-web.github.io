@@ -8,7 +8,7 @@
       (로그인·발주·회원 데이터는 항상 실시간 요청)
    3) 캐시는 "오프라인일 때 보여 줄 사본"으로만 씁니다. 온라인에서는 캐시를 먼저 쓰지 않습니다.
    ========================================================================== */
-const CACHE_NAME = 'crb-portal-v9';
+const CACHE_NAME = 'crb-portal-v10';
 
 /* 오프라인 첫 화면용 최소 자산 (상대 경로 — /portal/ 하위 배포 기준) */
 const CORE_ASSETS = [
@@ -17,13 +17,16 @@ const CORE_ASSETS = [
   './styles.css',
   './app.js',
   './data.js',
+  './order-guide-data.js',
+  './order-guide.js',
   './manifest.webmanifest',
   './assets/logo.png',
   './assets/logo-light.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/apple-touch-icon.png',
-  './assets/fonts/crunchs-sans.woff2'
+  './assets/fonts/crunchs-sans.woff2',
+  './assets/order-guide.jpg'
 ];
 
 self.addEventListener('install', (event) => {

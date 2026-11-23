@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="preload" href="assets/fonts/crunchs-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261123d">
+<link rel="stylesheet" href="styles.css?v=20261123e">
 </head>
 <body>
 
@@ -199,7 +199,7 @@
           <p class="side-card-title">가맹점주용 실무가이드</p>
           <a href="https://saltcoke.tistory.com" target="_blank" rel="noopener noreferrer">세무 · 노무 · 임대차 실무 <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="side-version">CRB점주용 · v1.8</p>
+        <p class="side-version">CRB점주용 · v1.9</p>
         <button class="side-logout" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
           로그아웃
@@ -318,6 +318,11 @@
               <strong>건의 게시판</strong>
               <small>본사에 문의하기</small>
             </button>
+            <button class="quick-card" data-nav="orders" data-guide-open>
+              <span class="quick-emoji" aria-hidden="true">🧾</span>
+              <strong>구매처 가이드</strong>
+              <small>품목별 브랜드 · 구매처</small>
+            </button>
           </div>
         </section>
       </section>
@@ -328,12 +333,28 @@
           <div>
             <p class="crumb">발주</p>
             <h1>식자재 · 물품 발주</h1>
-            <p class="view-sub">필요한 품목을 담고 발주를 신청하세요. 신청 후 <b>발주 내역</b>에서 상태를 확인할 수 있습니다.</p>
+            <p class="view-sub" id="orderSubHq">필요한 품목을 담고 발주를 신청하세요. 신청 후 <b>발주 내역</b>에서 상태를 확인할 수 있습니다.</p>
+            <p class="view-sub" id="orderSubGuide" hidden>본사가 지정한 품목별 <b>브랜드·구매처</b>입니다. 외부에서 직접 구매하는 품목을 확인하세요.</p>
           </div>
           <button class="cart-fab" id="cartFab" type="button">
             <span>발주 바구니 <b id="fabCount">0</b></span>
             <strong id="fabTotal">0원</strong>
           </button>
+        </div>
+
+        <div class="order-tabs" role="tablist" aria-label="발주 화면">
+          <button class="order-tab is-active" type="button" role="tab" aria-selected="true" data-order-tab="hq">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H3"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg>
+            본사 발주
+          </button>
+          <button class="order-tab" type="button" role="tab" aria-selected="false" data-order-tab="guide">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 9h16M9 9v10"/></svg>
+            외부 구매처 가이드
+          </button>
+          <a class="order-tab-dl" id="guideDownloadTop" href="assets/order-guide.jpg" download="크런치버거_발주품목_구매처_가이드.jpg">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4"/><path d="M5 18h14"/></svg>
+            JPG 표 다운로드
+          </a>
         </div>
 
         <div class="order-layout">
@@ -372,6 +393,40 @@
               <p class="cart-note">신청 즉시 접수대기 상태로 발주 내역에 기록됩니다.</p>
             </div>
           </aside>
+        </div>
+
+        <!-- 외부 구매처 가이드 -->
+        <div class="guide-panel" id="orderGuidePanel" hidden>
+          <div class="guide-tools panel">
+            <div class="chip-row" id="guideChips" role="tablist" aria-label="품목 분류"></div>
+            <div class="guide-search-row">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+                <input type="search" id="guideSearch" placeholder="품목 · 브랜드 · 구매처 검색" aria-label="구매처 가이드 검색">
+              </div>
+              <p class="guide-count" id="guideCount">전체 43종</p>
+            </div>
+          </div>
+
+          <div class="guide-card">
+            <table class="guide-table">
+              <thead>
+                <tr><th class="g-no">NO</th><th>품명</th><th>브랜드</th><th>구매처</th><th>비고</th></tr>
+              </thead>
+              <tbody id="guideBody"></tbody>
+            </table>
+            <p class="guide-empty" id="guideEmpty" hidden>검색 결과가 없습니다.</p>
+          </div>
+
+          <div class="guide-legend" id="guideLegend">
+            <span class="g-badge g-badge--stop">대체품 X</span><small>지정 제품 필수</small>
+            <span class="g-badge g-badge--ok">대체품 O</span><small>다른 제품 가능</small>
+            <span class="g-badge g-badge--hq">본점 발주</span><small>본사로 주문</small>
+            <span class="g-badge g-badge--self">자율구매</span><small>매장 직접 구매</small>
+            <span class="g-badge g-badge--free">브랜드 상관 X</span><small>브랜드 무관</small>
+          </div>
+
+          <p class="guide-note">구매처가 <b>–</b>인 품목은 지정된 외부 구매처가 없습니다. 본점에 문의해 주세요.</p>
         </div>
       </section>
 
@@ -871,6 +926,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="data.js?v=20261123d"></script>
-<script src="app.js?v=20261123d"></script>
+<script src="order-guide-data.js?v=20261123e"></script>
+<script src="app.js?v=20261123e"></script>
+<script src="order-guide.js?v=20261123e"></script>
 </body>
 </html>
